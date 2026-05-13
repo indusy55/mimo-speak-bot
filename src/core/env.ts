@@ -1,6 +1,8 @@
 import dotenv from "dotenv";
 import { z } from "zod";
 
+const defaultTelegramMediaMaxBytes = 5_000_000;
+
 const optionalString = (value: unknown) => {
   if (typeof value !== "string") {
     return value;
@@ -27,11 +29,24 @@ const envSchema = z.object({
     parseAdminIds,
     z.array(z.coerce.number().int().positive()).catch([]),
   ),
+  FFMPEG_PATH: z.preprocess(
+    optionalString,
+    z.string().trim().min(1).optional(),
+  ),
   TELEGRAM_BOT_TOKEN: z.preprocess(
     optionalString,
     z.string().trim().min(1),
   ),
+  TELEGRAM_MEDIA_MAX_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .catch(defaultTelegramMediaMaxBytes),
   TTS_API_KEY: z.preprocess(
+    optionalString,
+    z.string().trim().min(1),
+  ),
+  TTS_VOICE_SOURCES_DIR: z.preprocess(
     optionalString,
     z.string().trim().min(1),
   ),

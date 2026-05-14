@@ -1,32 +1,25 @@
-import type { InputMediaAudio } from "grammy/types";
-import { InputFile } from "grammy";
+import { createHash } from "node:crypto";
+import type { InlineQueryResultArticle } from "grammy/types";
 import { presetVoices } from "../../tts/preset-voices.js";
 import type { VoiceSourceService } from "../../voice/service.js";
-import { runBotTask } from "../task.js";
 import type { InlineDeps } from "./types.js";
 
 const inlineResultLimit = 50;
+const defaultPresetTitle = "【预置】默认音色";
 
 export function registerInlineQuery({
   bot,
   log,
-  queue,
-  tts,
   voiceSources,
-}: InlineDeps) {
+}: Pick<InlineDeps, "bot" | "log" | "voiceSources">) {
   bot.on("inline_query", async (ctx) => {
-    const text = ctx.inlineQuery.query.trim();
-
-    if (!text) {
-      await ctx.answerInlineQuery([], {
-        cache_time: 0,
-        is_personal: true,
-      });
-      return;
-    }
+    const queryText = ctx.inlineQuery.query.trim();
 
     try {
-      const results = await buildInlineResults(voiceSources);
+      const results = await buildInlineResults({
+        queryText,
+        voiceSources,
+      });
 
       await ctx.answerInlineQuery(results, {
         cache_time: 0,
@@ -48,134 +41,119 @@ export function registerInlineQuery({
       });
     }
   });
-
-  bot.on("chosen_inline_result", async (ctx) => {
-    if (!ctx.chosenInlineResult.inline_message_id) {
-      return;
-    }
-
-    const chosen = parseInlineResultId(ctx.chosenInlineResult.result_id);
-    const text = ctx.chosenInlineResult.query.trim();
-
-    if (!chosen || !text) {
-      return;
-    }
-
-    await runBotTask(
-      ctx,
-      log,
-      {
-        errorMessage: "内联语音合成失败",
-        queue,
-        react: {
-          error: "💊",
-          pending: "👀",
-          success: "👌",
-        },
-      },
-      async () => {
-        const result =
-          chosen.kind === "clone"
-            ? await tts.clone({
-                text,
-                voice: chosen.voice,
-              })
-            : await tts.preset({
-                text,
-                voice: chosen.voice,
-              });
-
-        await ctx.api.editMessageMediaInline(
-          ctx.chosenInlineResult.inline_message_id!,
-          buildInlineAudioMedia(result.audio.buffer, result.audio.format),
-        );
-      },
-    );
-  });
 }
 
-async function buildInlineResults(voiceSources: VoiceSourceService) {
-  const presetResults = presetVoices.map((voice) =>
+async function buildInlineResults({
+  queryText,
+  voiceSources,
+}: {
+  queryText: string;
+  voiceSources: VoiceSourceService;
+}): Promise<InlineQueryResultArticle[]> {
+  const results: InlineQueryResultArticle[] = [
     buildInlineResult({
       kind: "preset",
-      title: voice.label,
-      voice: voice.value,
+      queryText,
+      title: defaultPresetTitle,
     }),
-  );
-  const sourceResults = (await voiceSources.list()).map((source) =>
-    buildInlineResult({
-      kind: "clone",
-      title: source.name,
-      voice: source.name,
-    }),
-  );
+  ];
 
-  return [...presetResults, ...sourceResults].slice(0, inlineResultLimit);
+  for (const [index, voice] of presetVoices.entries()) {
+    if (results.length >= inlineResultLimit) {
+      break;
+    }
+
+    results.push(
+      buildInlineResult({
+        kind: "preset",
+        queryText,
+        title: `【预置】${voice.label}`,
+        voiceName: voice.value,
+        voiceOrder: index + 1,
+      }),
+    );
+  }
+
+  const sources = await voiceSources.list();
+
+  for (const [index, source] of sources.entries()) {
+    if (results.length >= inlineResultLimit) {
+      break;
+    }
+
+    results.push(
+      buildInlineResult({
+        kind: "clone",
+        queryText,
+        title: `【声音源】${source.name}`,
+        voiceName: source.name,
+        voiceOrder: index,
+      }),
+    );
+  }
+
+  return results;
 }
 
 function buildInlineResult({
   kind,
+  queryText,
   title,
-  voice,
+  voiceName,
+  voiceOrder,
 }: {
   kind: "clone" | "preset";
+  queryText: string;
   title: string;
-  voice: string;
-}) {
+  voiceName?: string;
+  voiceOrder?: number;
+}): InlineQueryResultArticle {
   return {
-    id: buildInlineResultId({
-      kind,
-      voice,
-    }),
+    description: buildDescription(kind, voiceName),
+    id: buildResultId(kind, queryText, voiceName, voiceOrder),
     input_message_content: {
-      message_text: " ",
+      message_text: buildCommandText(kind, queryText, voiceName),
     },
     title,
-    type: "article" as const,
+    type: "article",
   };
 }
 
-function buildInlineResultId({
-  kind,
-  voice,
-}: {
-  kind: "clone" | "preset";
-  voice: string;
-}) {
-  return Buffer.from(JSON.stringify({ kind, voice }), "utf8").toString(
-    "base64url",
-  );
+function buildDescription(kind: "clone" | "preset", voiceName?: string) {
+  const modeLabel = kind === "clone" ? "声音源" : "预置";
+  return `${modeLabel} · ${voiceName ?? "默认音色"}`;
 }
 
-function parseInlineResultId(resultId: string) {
-  try {
-    const raw = JSON.parse(Buffer.from(resultId, "base64url").toString("utf8"));
+function buildResultId(
+  kind: "clone" | "preset",
+  queryText: string,
+  voiceName?: string,
+  voiceOrder?: number,
+) {
+  return createHash("sha1")
+    .update(
+      JSON.stringify({
+        kind,
+        queryText,
+        voiceName: voiceName ?? "",
+        voiceOrder: voiceOrder ?? -1,
+      }),
+    )
+    .digest("hex");
+}
 
-    if (
-      !raw ||
-      typeof raw !== "object" ||
-      (raw.kind !== "clone" && raw.kind !== "preset") ||
-      typeof raw.voice !== "string"
-    ) {
-      return undefined;
-    }
+function buildCommandText(
+  kind: "clone" | "preset",
+  queryText: string,
+  voiceName?: string,
+) {
+  const command = kind === "clone" ? "/sc" : "/sp";
 
-    return {
-      kind: raw.kind as "clone" | "preset",
-      voice: raw.voice,
-    };
-  } catch {
-    return undefined;
+  if (!voiceName) {
+    return queryText.length > 0 ? `${command} ${queryText}` : command;
   }
-}
 
-function buildInlineAudioMedia(
-  buffer: Buffer,
-  format: "mp3" | "ogg" | "wav",
-): InputMediaAudio {
-  return {
-    media: new InputFile(buffer, `speech.${format}`),
-    title: "speech",
-    type: "audio",
-  };
+  return queryText.length > 0
+    ? `${command} (${voiceName}) ${queryText}`
+    : `${command} (${voiceName})`;
 }

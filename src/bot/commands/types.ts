@@ -23,7 +23,5 @@ export type CommandDeps = {
 export type InlineDeps = {
   bot: Bot;
   log: Log;
-  queue: ChatQueue;
-  tts: TtsService;
   voiceSources: VoiceSourceService;
 };

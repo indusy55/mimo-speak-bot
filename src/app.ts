@@ -54,8 +54,6 @@ export async function bootstrap() {
   registerInlineQuery({
     bot,
     log,
-    queue,
-    tts,
     voiceSources,
   });
 

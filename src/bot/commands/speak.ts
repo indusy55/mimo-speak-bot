@@ -103,41 +103,45 @@ export function registerSpeakCommands({
     await ctx.answerCallbackQuery();
     await ctx.editMessageReplyMarkup();
 
-    const result = await runBotTask(
-      ctx,
-      log,
-      {
-        errorMessage: "语音合成失败",
-        queue,
-        react: {
-          error: "💊",
-          pending: "👀",
-          success: "👌",
+    const taskPromise = (async () => {
+      const result = await runBotTask(
+        ctx,
+        log,
+        {
+          errorMessage: "语音合成失败",
+          queue,
+          react: {
+            error: "💊",
+            pending: "👀",
+            success: "👌",
+          },
+          ...(payload.replyToMessageId !== undefined
+            ? { replyToMessageId: payload.replyToMessageId }
+            : {}),
         },
+        async () =>
+          tts.preset({
+            ...(payload.instruction ? { instruction: payload.instruction } : {}),
+            ...(payload.style ? { style: payload.style } : {}),
+            text: payload.text,
+            voice: voice.value,
+          }),
+      );
+
+      if (!result.ok) {
+        return;
+      }
+
+      await replySpeechAudio(ctx, result.value, {
+        caption: `预置：${voice.label}`,
         ...(payload.replyToMessageId !== undefined
           ? { replyToMessageId: payload.replyToMessageId }
           : {}),
-      },
-      async () =>
-        tts.preset({
-          ...(payload.instruction ? { instruction: payload.instruction } : {}),
-          ...(payload.style ? { style: payload.style } : {}),
-          text: payload.text,
-          voice: voice.value,
-        }),
-    );
+        title: "语音",
+      });
+    })();
 
-    if (!result.ok) {
-      return;
-    }
-
-    await replySpeechAudio(ctx, result.value, {
-      caption: `预置：${voice.label}`,
-      ...(payload.replyToMessageId !== undefined
-        ? { replyToMessageId: payload.replyToMessageId }
-        : {}),
-      title: "语音",
-    });
+    observeBackgroundTask(ctx, log, taskPromise, "后台语音任务执行失败");
   });
 }
 
@@ -241,7 +245,7 @@ async function handleSpeakCommand({
     return;
   }
 
-  await runBotTask(
+  const taskPromise = runBotTask(
     ctx,
     log,
     {
@@ -267,6 +271,8 @@ async function handleSpeakCommand({
       });
     },
   );
+
+  observeBackgroundTask(ctx, log, taskPromise, "后台语音任务执行失败");
 }
 
 function synthesize({
@@ -314,4 +320,23 @@ function buildCaption(kind: SpeakKind, voice?: string) {
   }
 
   return `声音源：${voice ?? ""}`.trim();
+}
+
+function observeBackgroundTask(
+  ctx: Context,
+  log: Log,
+  task: Promise<unknown>,
+  message: string,
+) {
+  task.catch((error) => {
+    log.error(
+      {
+        chatId: ctx.chat?.id,
+        error,
+        fromId: ctx.from?.id,
+        messageId: ctx.msgId,
+      },
+      message,
+    );
+  });
 }

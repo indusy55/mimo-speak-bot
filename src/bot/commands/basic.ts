@@ -14,14 +14,14 @@ export const commands = [
 ];
 
 const startText = [
-  "语音机器人",
+  "TTS AI BOT",
   "",
   "/sp (冰糖) 文本",
   "/sc (马保国) 文本",
   "/sd (温柔的女声) 文本",
   "/ss 回复一条消息后选择音色",
   "",
-  "也可以回复消息后只发命令参数。",
+  "或带着命令和参数恢复到文本上，也支持 quote",
 ].join("\n");
 
 export function registerBasicCommands({

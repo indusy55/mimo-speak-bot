@@ -13,17 +13,19 @@ export type VoiceSourceService = {
   validateName: (voiceName: string | undefined) => string | undefined;
 };
 
-export const createVoiceSourceService = ({
+export function createVoiceSourceService({
   store,
   transcoder,
 }: {
   store: VoiceSourceStore;
   transcoder: VoiceSourceTranscoder;
-}): VoiceSourceService => ({
-  delete: (voiceName: string) => store.delete(voiceName),
-  get: (voiceName: string) => store.get(voiceName),
-  list: () => store.list(),
-  save: async (voiceName: string, file: VoiceSourceUpload) =>
-    store.save(voiceName, await transcoder.transform(file)),
-  validateName: (voiceName: string | undefined) => store.validateName(voiceName),
-});
+}): VoiceSourceService {
+  return {
+    delete: (voiceName: string) => store.delete(voiceName),
+    get: (voiceName: string) => store.get(voiceName),
+    list: () => store.list(),
+    save: async (voiceName: string, file: VoiceSourceUpload) =>
+      store.save(voiceName, await transcoder.transform(file)),
+    validateName: (voiceName: string | undefined) => store.validateName(voiceName),
+  };
+}

@@ -7,7 +7,7 @@ import { registerVoiceSourceCommands } from "./commands/voice-source.js";
 
 export { registerInlineQuery };
 
-export const registerCommands = (deps: CommandDeps) => {
+export function registerCommands(deps: CommandDeps) {
   deps.bot.api.setMyCommands(commands).catch((error) => {
     deps.log.warn(
       {
@@ -21,6 +21,6 @@ export const registerCommands = (deps: CommandDeps) => {
   registerListCommands(deps);
   registerSpeakCommands(deps);
   registerVoiceSourceCommands(deps);
-};
+}
 
 export type { CommandDeps, InlineDeps };

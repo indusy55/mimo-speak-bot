@@ -24,8 +24,8 @@ const startText = [
   "也可以回复消息后只发命令参数。",
 ].join("\n");
 
-export const registerBasicCommands = ({
+export function registerBasicCommands({
   bot,
-}: Pick<CommandDeps, "bot">) => {
+}: Pick<CommandDeps, "bot">) {
   bot.command("start", (ctx) => replyText(ctx, startText));
-};
+}

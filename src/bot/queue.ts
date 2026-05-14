@@ -2,7 +2,7 @@ export type ChatQueue = {
   run: <T>(chatId: number, task: () => Promise<T>) => Promise<T>;
 };
 
-export const createChatQueue = (): ChatQueue => {
+export function createChatQueue(): ChatQueue {
   const lanes = new Map<number, Promise<unknown>>();
 
   return {
@@ -21,4 +21,4 @@ export const createChatQueue = (): ChatQueue => {
       }
     },
   };
-};
+}

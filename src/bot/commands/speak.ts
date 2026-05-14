@@ -17,7 +17,7 @@ import type { CommandDeps } from "./types.js";
 
 type SpeakKind = "clone" | "design" | "preset";
 
-export const registerSpeakCommands = ({
+export function registerSpeakCommands({
   bot,
   log,
   queue,
@@ -26,7 +26,7 @@ export const registerSpeakCommands = ({
 }: Pick<
   CommandDeps,
   "bot" | "log" | "queue" | "tts" | "voiceSelectStore"
->) => {
+>) {
   bot.command("sp", async (ctx) => {
     await handleSpeakCommand({
       command: "sp",
@@ -82,11 +82,11 @@ export const registerSpeakCommands = ({
 
     const sessionId = match[1]!;
     const voiceIndex = Number(match[2]);
-  const payload = voiceSelectStore.read(sessionId);
+    const payload = voiceSelectStore.read(sessionId);
 
-  if (
-    !payload ||
-    !Number.isInteger(voiceIndex) ||
+    if (
+      !payload ||
+      !Number.isInteger(voiceIndex) ||
       voiceIndex < 0
     ) {
       await ctx.answerCallbackQuery("已过期");
@@ -129,7 +129,7 @@ export const registerSpeakCommands = ({
       return;
     }
 
-      await replySpeechAudio(ctx, result.value, {
+    await replySpeechAudio(ctx, result.value, {
       caption: `预置：${voice.label}`,
       ...(payload.replyToMessageId !== undefined
         ? { replyToMessageId: payload.replyToMessageId }
@@ -137,9 +137,9 @@ export const registerSpeakCommands = ({
       title: "语音",
     });
   });
-};
+}
 
-const handleSelectSpeakCommand = async ({
+async function handleSelectSpeakCommand({
   ctx,
   log,
   usage,
@@ -149,7 +149,7 @@ const handleSelectSpeakCommand = async ({
   log: Log;
   usage: string;
   voiceSelectStore: CommandDeps["voiceSelectStore"];
-}) => {
+}) {
   const message = ctx.message;
   const commandText = readCommandText(ctx);
 
@@ -188,9 +188,9 @@ const handleSelectSpeakCommand = async ({
   await replyText(ctx, "选择音色", replyToMessageId, {
     reply_markup: buildVoiceSelectKeyboard(sessionId),
   });
-};
+}
 
-const handleSpeakCommand = async ({
+async function handleSpeakCommand({
   command,
   ctx,
   kind,
@@ -206,7 +206,7 @@ const handleSpeakCommand = async ({
   queue: ChatQueue;
   tts: TtsService;
   usage: string;
-}) => {
+}) {
   const message = ctx.message;
   const commandText = readCommandText(ctx);
 
@@ -264,9 +264,9 @@ const handleSpeakCommand = async ({
       });
     },
   );
-};
+}
 
-const synthesize = ({
+function synthesize({
   kind,
   params,
   text,
@@ -276,7 +276,7 @@ const synthesize = ({
   params: SpeakParams;
   text: string;
   tts: TtsService;
-}) => {
+}) {
   if (kind === "clone") {
     return tts.clone({
       ...(params.instruction ? { instruction: params.instruction } : {}),
@@ -299,9 +299,9 @@ const synthesize = ({
     text,
     ...(params.voice ? { voice: params.voice } : {}),
   });
-};
+}
 
-const buildCaption = (kind: SpeakKind, voice?: string) => {
+function buildCaption(kind: SpeakKind, voice?: string) {
   if (kind === "preset") {
     return `预置：${voice?.trim() || defaultPresetVoiceId}`;
   }
@@ -311,4 +311,4 @@ const buildCaption = (kind: SpeakKind, voice?: string) => {
   }
 
   return `声音源：${voice ?? ""}`.trim();
-};
+}

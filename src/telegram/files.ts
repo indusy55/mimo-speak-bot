@@ -21,13 +21,13 @@ type CacheEntry = {
 
 const cacheTtlMs = 55 * 60 * 1000;
 
-export const createTelegramFiles = ({
+export function createTelegramFiles({
   api,
   env,
 }: {
   api: Api;
   env: Pick<Env, "TELEGRAM_BOT_TOKEN">;
-}): TelegramFiles => {
+}): TelegramFiles {
   const cache = new Map<string, CacheEntry>();
 
   return {
@@ -64,4 +64,4 @@ export const createTelegramFiles = ({
       return meta;
     },
   };
-};
+}

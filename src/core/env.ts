@@ -3,7 +3,7 @@ import { z } from "zod";
 
 const defaultTelegramMediaMaxBytes = 5_000_000;
 
-const optionalString = (value: unknown) => {
+function optionalString(value: unknown) {
   if (typeof value !== "string") {
     return value;
   }
@@ -11,9 +11,9 @@ const optionalString = (value: unknown) => {
   const trimmed = value.trim();
 
   return trimmed.length === 0 ? undefined : trimmed;
-};
+}
 
-const parseAdminIds = (value: unknown) => {
+function parseAdminIds(value: unknown) {
   if (typeof value !== "string") {
     return [];
   }
@@ -22,7 +22,7 @@ const parseAdminIds = (value: unknown) => {
     .split(/[,\s]+/)
     .map((item) => item.trim())
     .filter((item) => item.length > 0);
-};
+}
 
 const envSchema = z.object({
   ADMIN_IDS: z.preprocess(
@@ -54,7 +54,7 @@ const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>;
 
-export const loadEnv = () => {
+export function loadEnv() {
   dotenv.config({
     quiet: true,
   });
@@ -70,4 +70,4 @@ export const loadEnv = () => {
   }
 
   return result.data;
-};
+}

@@ -1,10 +1,11 @@
 import { InlineKeyboard } from "grammy";
 import { presetVoices } from "../tts/preset-voices.js";
 
-export const buildCancelKeyboard = (sessionId: string) =>
-  new InlineKeyboard().text("取消", `cancel:${sessionId}`);
+export function buildCancelKeyboard(sessionId: string) {
+  return new InlineKeyboard().text("取消", `cancel:${sessionId}`);
+}
 
-export const buildVoiceSelectKeyboard = (sessionId: string) => {
+export function buildVoiceSelectKeyboard(sessionId: string) {
   const keyboard = new InlineKeyboard();
 
   for (const [index, voice] of presetVoices.entries()) {
@@ -12,4 +13,4 @@ export const buildVoiceSelectKeyboard = (sessionId: string) => {
   }
 
   return keyboard;
-};
+}

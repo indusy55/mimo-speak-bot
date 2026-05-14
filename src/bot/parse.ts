@@ -8,19 +8,19 @@ export type SpeakParams = {
   voice?: string;
 };
 
-export const readCommandText = (ctx: Context) => {
+export function readCommandText(ctx: Context) {
   const message = ctx.message;
 
   return message && "text" in message ? message.text : undefined;
-};
+}
 
-export const parseSpeakCommand = ({
+export function parseSpeakCommand({
   command,
   text,
 }: {
   command: string | string[];
   text: string;
-}): SpeakParams | undefined => {
+}): SpeakParams | undefined {
   const trimmed = text.trim();
   const names = Array.isArray(command) ? command : [command];
   const match = trimmed.match(
@@ -105,15 +105,15 @@ export const parseSpeakCommand = ({
   }
 
   return params;
-};
+}
 
-export const resolveSpeakText = ({
+export function resolveSpeakText({
   message,
   params,
 }: {
   message: Message;
   params: SpeakParams;
-}) => {
+}) {
   if (params.text?.trim()) {
     return params.text.trim();
   }
@@ -127,7 +127,7 @@ export const resolveSpeakText = ({
   }
 
   return undefined;
-};
+}
 
 export function* readReplyTextCandidates(message: Message): Generator<string | undefined> {
   yield readStringField(readObjectField(message, "quote"), "text");
@@ -145,31 +145,31 @@ export function* readReplyTextCandidates(message: Message): Generator<string | u
   yield readStringField(externalMessage, "caption");
 }
 
-const readObjectField = (value: unknown, key: string) => {
+function readObjectField(value: unknown, key: string) {
   if (!value || typeof value !== "object" || !(key in value)) {
     return undefined;
   }
 
   const field = (value as Record<string, unknown>)[key];
   return field && typeof field === "object" ? field : undefined;
-};
+}
 
-const readStringField = (value: unknown, key: string) => {
+function readStringField(value: unknown, key: string) {
   if (!value || typeof value !== "object" || !(key in value)) {
     return undefined;
   }
 
   const field = (value as Record<string, unknown>)[key];
   return typeof field === "string" ? field : undefined;
-};
+}
 
-export const parseNameOnlyCommand = ({
+export function parseNameOnlyCommand({
   command,
   text,
 }: {
   command: string | string[];
   text: string;
-}) => {
+}) {
   const trimmed = text.trim();
   const names = Array.isArray(command) ? command : [command];
   const match = trimmed.match(
@@ -204,4 +204,4 @@ export const parseNameOnlyCommand = ({
   }
 
   return name;
-};
+}

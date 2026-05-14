@@ -46,11 +46,11 @@ type VoiceSourceEntry = {
   normalizedName: string;
 };
 
-export const createVoiceSourceStore = ({
+export function createVoiceSourceStore({
   env,
 }: {
   env: Pick<Env, "TTS_VOICE_SOURCES_DIR">;
-}): VoiceSourceStore => {
+}): VoiceSourceStore {
   const dir = env.TTS_VOICE_SOURCES_DIR.trim();
 
   return {
@@ -110,9 +110,9 @@ export const createVoiceSourceStore = ({
     },
     validateName,
   };
-};
+}
 
-const readEntries = async (dir: string) => {
+async function readEntries(dir: string) {
   let entries: Dirent<string>[];
 
   try {
@@ -166,9 +166,9 @@ const readEntries = async (dir: string) => {
   }
 
   return [...deduped.values()];
-};
+}
 
-const removeExistingFiles = async (dir: string, normalizedName: string) => {
+async function removeExistingFiles(dir: string, normalizedName: string) {
   const entries = await readEntries(dir);
   let removed = false;
 
@@ -184,9 +184,9 @@ const removeExistingFiles = async (dir: string, normalizedName: string) => {
   }
 
   return removed;
-};
+}
 
-export const validateName = (voiceName: string | undefined) => {
+export function validateName(voiceName: string | undefined) {
   const normalizedName = voiceName?.trim();
 
   if (!normalizedName) {
@@ -205,16 +205,19 @@ export const validateName = (voiceName: string | undefined) => {
   }
 
   return normalizedName;
-};
+}
 
-const normalizeVoiceName = (voiceName: string) =>
-  voiceName.trim().toLocaleLowerCase();
+function normalizeVoiceName(voiceName: string) {
+  return voiceName.trim().toLocaleLowerCase();
+}
 
-const hasControlCharacters = (value: string) =>
-  Array.from(value).some((char) => {
+function hasControlCharacters(value: string) {
+  return Array.from(value).some((char) => {
     const codePoint = char.codePointAt(0);
     return codePoint !== undefined && codePoint >= 0 && codePoint <= 31;
   });
+}
 
-const isMissing = (error: unknown) =>
-  error instanceof Error && "code" in error && error.code === "ENOENT";
+function isMissing(error: unknown) {
+  return error instanceof Error && "code" in error && error.code === "ENOENT";
+}

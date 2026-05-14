@@ -14,7 +14,7 @@ export type VoiceSelectStore = {
 
 const maxEntries = 200;
 
-export const createVoiceSelectStore = (): VoiceSelectStore => {
+export function createVoiceSelectStore(): VoiceSelectStore {
   const entries = new Map<string, VoiceSelectPayload>();
 
   return {
@@ -34,4 +34,4 @@ export const createVoiceSelectStore = (): VoiceSelectStore => {
       return id;
     },
   };
-};
+}

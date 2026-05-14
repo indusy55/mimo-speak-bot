@@ -8,7 +8,7 @@ import { runBotTask } from "../task.js";
 import { createAdminOnly } from "./auth.js";
 import type { CommandDeps } from "./types.js";
 
-export const registerVoiceSourceCommands = ({
+export function registerVoiceSourceCommands({
   bot,
   env,
   log,
@@ -23,7 +23,7 @@ export const registerVoiceSourceCommands = ({
   | "telegramAudioSource"
   | "uploadSessions"
   | "voiceSources"
->) => {
+>) {
   const adminOnly = createAdminOnly(env, log);
 
   bot.command("va", adminOnly, async (ctx) => {
@@ -163,6 +163,8 @@ export const registerVoiceSourceCommands = ({
       `${result.value.replacedExisting ? "已更新" : "已保存"}声音源“${result.value.voiceName}”。`,
     );
   });
-};
+}
 
-const buildSessionKey = (chatId: number, userId: number) => `${chatId}:${userId}`;
+function buildSessionKey(chatId: number, userId: number) {
+  return `${chatId}:${userId}`;
+}

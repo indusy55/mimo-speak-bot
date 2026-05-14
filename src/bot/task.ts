@@ -25,12 +25,12 @@ export type BotTaskResult<T> =
       ok: false;
     };
 
-export const runBotTask = async <T>(
+export async function runBotTask<T>(
   ctx: Context,
   log: Log,
   options: BotTaskOptions,
   task: () => Promise<T>,
-): Promise<BotTaskResult<T>> => {
+): Promise<BotTaskResult<T>> {
   try {
     const run = () => task();
     const value =
@@ -56,13 +56,13 @@ export const runBotTask = async <T>(
       ok: false,
     };
   }
-};
+}
 
-const react = async (
+async function react(
   ctx: Context,
   log: Log,
   emoji: Parameters<Context["react"]>[0],
-) => {
+) {
   try {
     await ctx.react(emoji, {
       is_big: false,
@@ -77,14 +77,14 @@ const react = async (
       "failed to react to message",
     );
   }
-};
+}
 
-const handleTaskError = async (
+async function handleTaskError(
   ctx: Context,
   log: Log,
   error: unknown,
   options: BotTaskOptions,
-) => {
+) {
   log.error(
     {
       chatId: ctx.chat?.id,
@@ -103,4 +103,4 @@ const handleTaskError = async (
     error instanceof Error ? error.message : options.errorMessage,
     options.replyToMessageId,
   );
-};
+}

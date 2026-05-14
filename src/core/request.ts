@@ -3,10 +3,10 @@ export type RequestOptions = {
   timeoutMs?: number;
 };
 
-export const createRequestSignal = ({
+export function createRequestSignal({
   signal,
   timeoutMs,
-}: RequestOptions) => {
+}: RequestOptions) {
   if (timeoutMs === undefined) {
     return signal
       ? {
@@ -40,4 +40,4 @@ export const createRequestSignal = ({
     },
     signal: controller.signal,
   };
-};
+}

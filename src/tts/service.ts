@@ -22,51 +22,53 @@ export type TtsService = {
   preset: (input: SpeakInput, options?: RequestOptions) => Promise<TtsResult>;
 };
 
-export const createTtsService = ({
+export function createTtsService({
   api,
   voiceSources,
 }: {
   api: TtsApi;
   voiceSources: VoiceSourceStore;
-}): TtsService => ({
-  clone: async ({ instruction, style, text, voice }, options) => {
-    const voiceSource = voice ? await voiceSources.get(voice) : undefined;
+}): TtsService {
+  return {
+    clone: async ({ instruction, style, text, voice }, options) => {
+      const voiceSource = voice ? await voiceSources.get(voice) : undefined;
 
-    if (!voiceSource) {
-      throw new Error("No voice source is configured.");
-    }
+      if (!voiceSource) {
+        throw new Error("No voice source is configured.");
+      }
 
-    return api.clone(
-      {
-        ...(instruction ? { instruction } : {}),
-        source: {
-          base64: voiceSource.base64,
-          mimeType: voiceSource.mimeType,
+      return api.clone(
+        {
+          ...(instruction ? { instruction } : {}),
+          source: {
+            base64: voiceSource.base64,
+            mimeType: voiceSource.mimeType,
+          },
+          ...(style ? { style } : {}),
+          text,
         },
-        ...(style ? { style } : {}),
-        text,
-      },
-      options,
-    );
-  },
+        options,
+      );
+    },
 
-  design: ({ prompt, text }, options) =>
-    api.design(
-      {
-        prompt,
-        text,
-      },
-      options,
-    ),
+    design: ({ prompt, text }, options) =>
+      api.design(
+        {
+          prompt,
+          text,
+        },
+        options,
+      ),
 
-  preset: ({ instruction, style, text, voice }, options) =>
-    api.preset(
-      {
-        ...(instruction ? { instruction } : {}),
-        ...(style ? { style } : {}),
-        text,
-        ...(voice ? { voice } : {}),
-      },
-      options,
-    ),
-});
+    preset: ({ instruction, style, text, voice }, options) =>
+      api.preset(
+        {
+          ...(instruction ? { instruction } : {}),
+          ...(style ? { style } : {}),
+          text,
+          ...(voice ? { voice } : {}),
+        },
+        options,
+      ),
+  };
+}

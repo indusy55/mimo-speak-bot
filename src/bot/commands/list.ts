@@ -3,11 +3,11 @@ import { replyText } from "../reply.js";
 import { runBotTask } from "../task.js";
 import type { CommandDeps } from "./types.js";
 
-export const registerListCommands = ({
+export function registerListCommands({
   bot,
   log,
   voiceSources,
-}: Pick<CommandDeps, "bot" | "log" | "voiceSources">) => {
+}: Pick<CommandDeps, "bot" | "log" | "voiceSources">) {
   bot.command("vp", async (ctx) => {
     await replyText(
       ctx,
@@ -44,4 +44,4 @@ export const registerListCommands = ({
         : "没有找到声音源。",
     );
   });
-};
+}

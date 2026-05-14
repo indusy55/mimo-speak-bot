@@ -78,11 +78,11 @@ const presetModel = "mimo-v2.5-tts";
 const cloneModel = "mimo-v2.5-tts-voiceclone";
 const designModel = "mimo-v2.5-tts-voicedesign";
 
-export const requestJson = async <T>(
+export async function requestJson<T>(
   env: Pick<Env, "TTS_API_KEY">,
   path: string,
   options: RequestOptions = {},
-): Promise<T> => {
+): Promise<T> {
   const signal = createRequestSignal(options);
 
   try {
@@ -108,126 +108,132 @@ export const requestJson = async <T>(
   } finally {
     signal?.dispose();
   }
-};
+}
 
-export const createTtsApi = ({ env }: { env: Pick<Env, "TTS_API_KEY"> }) => ({
-  clone: async (
-    {
-      format = defaultFormat,
-      instruction,
-      source,
-      style,
-      text,
-    }: CloneSpeechInput,
-    options?: BaseRequestOptions,
-  ) => {
-    const speechText = normalizeSpeechText(text);
-    const raw = await requestJson<RawChatResponse>(env, "chat/completions", {
-      body: {
-        audio: {
-          format,
-          voice: `data:${source.mimeType};base64,${source.base64}`,
-        },
-        messages: [
-          ...(instruction?.trim()
-            ? [{ content: instruction.trim(), role: "user" as const }]
-            : []),
-          {
-            content: style?.trim() ? `(${style.trim()})${speechText}` : speechText,
-            role: "assistant",
+export function createTtsApi({ env }: { env: Pick<Env, "TTS_API_KEY"> }) {
+  return {
+    clone: async (
+      {
+        format = defaultFormat,
+        instruction,
+        source,
+        style,
+        text,
+      }: CloneSpeechInput,
+      options?: BaseRequestOptions,
+    ) => {
+      const speechText = normalizeSpeechText(text);
+      const raw = await requestJson<RawChatResponse>(env, "chat/completions", {
+        body: {
+          audio: {
+            format,
+            voice: `data:${source.mimeType};base64,${source.base64}`,
           },
-        ],
+          messages: [
+            ...(instruction?.trim()
+              ? [{ content: instruction.trim(), role: "user" as const }]
+              : []),
+            {
+              content: style?.trim()
+                ? `(${style.trim()})${speechText}`
+                : speechText,
+              role: "assistant",
+            },
+          ],
+          model: cloneModel,
+        },
+        ...options,
+      });
+
+      return readSpeechResult(raw, {
+        format,
         model: cloneModel,
-      },
-      ...options,
-    });
+      });
+    },
 
-    return readSpeechResult(raw, {
-      format,
-      model: cloneModel,
-    });
-  },
+    design: async (
+      {
+        format = defaultFormat,
+        prompt,
+        text,
+      }: DesignSpeechInput,
+      options?: BaseRequestOptions,
+    ) => {
+      const speechText = normalizeSpeechText(text);
+      const designPrompt = prompt.trim();
 
-  design: async (
-    {
-      format = defaultFormat,
-      prompt,
-      text,
-    }: DesignSpeechInput,
-    options?: BaseRequestOptions,
-  ) => {
-    const speechText = normalizeSpeechText(text);
-    const designPrompt = prompt.trim();
+      if (designPrompt.length === 0) {
+        throw new Error("Voice design prompt must not be empty.");
+      }
 
-    if (designPrompt.length === 0) {
-      throw new Error("Voice design prompt must not be empty.");
-    }
-
-    const raw = await requestJson<RawChatResponse>(env, "chat/completions", {
-      body: {
-        audio: {
-          format,
+      const raw = await requestJson<RawChatResponse>(env, "chat/completions", {
+        body: {
+          audio: {
+            format,
+          },
+          messages: [
+            {
+              content: designPrompt,
+              role: "user",
+            },
+            {
+              content: speechText,
+              role: "assistant",
+            },
+          ],
+          model: designModel,
         },
-        messages: [
-          {
-            content: designPrompt,
-            role: "user",
-          },
-          {
-            content: speechText,
-            role: "assistant",
-          },
-        ],
+        ...options,
+      });
+
+      return readSpeechResult(raw, {
+        format,
         model: designModel,
-      },
-      ...options,
-    });
+      });
+    },
 
-    return readSpeechResult(raw, {
-      format,
-      model: designModel,
-    });
-  },
-
-  preset: async (
-    {
-      format = defaultFormat,
-      instruction,
-      style,
-      text,
-      voice,
-    }: PresetSpeechInput,
-    options?: BaseRequestOptions,
-  ) => {
-    const speechText = normalizeSpeechText(text);
-    const raw = await requestJson<RawChatResponse>(env, "chat/completions", {
-      body: {
-        audio: {
-          format,
-          voice: voice?.trim() || defaultPresetVoiceId,
-        },
-        messages: [
-          ...(instruction?.trim()
-            ? [{ content: instruction.trim(), role: "user" as const }]
-            : []),
-          {
-            content: style?.trim() ? `(${style.trim()})${speechText}` : speechText,
-            role: "assistant",
+    preset: async (
+      {
+        format = defaultFormat,
+        instruction,
+        style,
+        text,
+        voice,
+      }: PresetSpeechInput,
+      options?: BaseRequestOptions,
+    ) => {
+      const speechText = normalizeSpeechText(text);
+      const raw = await requestJson<RawChatResponse>(env, "chat/completions", {
+        body: {
+          audio: {
+            format,
+            voice: voice?.trim() || defaultPresetVoiceId,
           },
-        ],
+          messages: [
+            ...(instruction?.trim()
+              ? [{ content: instruction.trim(), role: "user" as const }]
+              : []),
+            {
+              content: style?.trim()
+                ? `(${style.trim()})${speechText}`
+                : speechText,
+              role: "assistant",
+            },
+          ],
+          model: presetModel,
+        },
+        ...options,
+      });
+
+      return readSpeechResult(raw, {
+        format,
         model: presetModel,
-      },
-      ...options,
-    });
+      });
+    },
+  };
+}
 
-    return readSpeechResult(raw, {
-      format,
-      model: presetModel,
-    });
-  },
-});
-
-const normalizeSpeechText = (text: string) => {
+function normalizeSpeechText(text: string) {
   const speechText = text.trim();
 
   if (speechText.length === 0) {
@@ -235,9 +241,9 @@ const normalizeSpeechText = (text: string) => {
   }
 
   return speechText;
-};
+}
 
-const readSpeechResult = (
+function readSpeechResult(
   raw: RawChatResponse,
   {
     format,
@@ -246,7 +252,7 @@ const readSpeechResult = (
     format: AudioFormat;
     model: string;
   },
-): TtsResult => {
+): TtsResult {
   const base64 = raw.choices?.[0]?.message?.audio?.data;
 
   if (!base64) {
@@ -266,9 +272,9 @@ const readSpeechResult = (
     ...(raw.id !== undefined ? { id: raw.id } : {}),
     model: raw.model ?? model,
   };
-};
+}
 
-const readJson = async (response: Response): Promise<unknown> => {
+async function readJson(response: Response): Promise<unknown> {
   const text = await response.text();
 
   if (text.length === 0) {
@@ -280,9 +286,9 @@ const readJson = async (response: Response): Promise<unknown> => {
   } catch {
     throw new Error(`Expected JSON response, received status ${response.status}.`);
   }
-};
+}
 
-const readErrorMessage = (raw: unknown, status: number) => {
+function readErrorMessage(raw: unknown, status: number) {
   if (raw && typeof raw === "object" && "error" in raw) {
     const error = (raw as RawChatResponse).error;
 
@@ -292,9 +298,9 @@ const readErrorMessage = (raw: unknown, status: number) => {
   }
 
   return `Request failed with status ${status}.`;
-};
+}
 
-const readMimeType = (format: AudioFormat) => {
+function readMimeType(format: AudioFormat) {
   if (format === "mp3") {
     return "audio/mpeg";
   }
@@ -304,4 +310,4 @@ const readMimeType = (format: AudioFormat) => {
   }
 
   return "audio/wav";
-};
+}

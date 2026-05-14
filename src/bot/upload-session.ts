@@ -17,7 +17,7 @@ export type UploadSessions = {
   start: (chatId: number, userId: number, session: UploadSession) => void;
 };
 
-export const createUploadSessions = (): UploadSessions => {
+export function createUploadSessions(): UploadSessions {
   const sessions = new Map<string, UploadSession>();
 
   return {
@@ -53,6 +53,8 @@ export const createUploadSessions = (): UploadSessions => {
       sessions.set(readKey(chatId, userId), session);
     },
   };
-};
+}
 
-const readKey = (chatId: number, userId: number) => `${chatId}:${userId}`;
+function readKey(chatId: number, userId: number) {
+  return `${chatId}:${userId}`;
+}

@@ -7,13 +7,13 @@ import type { InlineDeps } from "./types.js";
 
 const inlineResultLimit = 50;
 
-export const registerInlineQuery = ({
+export function registerInlineQuery({
   bot,
   log,
   queue,
   tts,
   voiceSources,
-}: InlineDeps) => {
+}: InlineDeps) {
   bot.on("inline_query", async (ctx) => {
     const text = ctx.inlineQuery.query.trim();
 
@@ -93,15 +93,15 @@ export const registerInlineQuery = ({
       },
     );
   });
-};
+}
 
-const buildInlineResults = async ({
+async function buildInlineResults({
   text,
   voiceSources,
 }: {
   text: string;
   voiceSources: VoiceSourceService;
-}) => {
+}) {
   const presetResults = presetVoices.map((voice) =>
     buildInlineResult({
       kind: "preset",
@@ -120,9 +120,9 @@ const buildInlineResults = async ({
   );
 
   return [...presetResults, ...sourceResults].slice(0, inlineResultLimit);
-};
+}
 
-const buildInlineResult = ({
+function buildInlineResult({
   kind,
   text,
   title,
@@ -132,21 +132,23 @@ const buildInlineResult = ({
   text: string;
   title: string;
   voice: string;
-}) => ({
-  description: text,
-  id: buildInlineResultId({
-    kind,
-    text,
-    voice,
-  }),
-  input_message_content: {
-    message_text: text,
-  },
-  title,
-  type: "article" as const,
-});
+}) {
+  return {
+    description: text,
+    id: buildInlineResultId({
+      kind,
+      text,
+      voice,
+    }),
+    input_message_content: {
+      message_text: text,
+    },
+    title,
+    type: "article" as const,
+  };
+}
 
-const buildInlineResultId = ({
+function buildInlineResultId({
   kind,
   text,
   voice,
@@ -154,12 +156,13 @@ const buildInlineResultId = ({
   kind: "clone" | "preset";
   text: string;
   voice: string;
-}) =>
-  Buffer.from(JSON.stringify({ kind, text, voice }), "utf8")
+}) {
+  return Buffer.from(JSON.stringify({ kind, text, voice }), "utf8")
     .toString("base64url")
     .slice(0, 64);
+}
 
-const parseInlineResultId = (resultId: string) => {
+function parseInlineResultId(resultId: string) {
   try {
     const raw = JSON.parse(Buffer.from(resultId, "base64url").toString("utf8"));
 
@@ -181,13 +184,15 @@ const parseInlineResultId = (resultId: string) => {
   } catch {
     return undefined;
   }
-};
+}
 
-const buildInlineAudioMedia = (
+function buildInlineAudioMedia(
   buffer: Buffer,
   format: "mp3" | "ogg" | "wav",
-): InputMediaAudio => ({
-  media: new InputFile(buffer, `speech.${format}`),
-  title: "speech",
-  type: "audio",
-});
+): InputMediaAudio {
+  return {
+    media: new InputFile(buffer, `speech.${format}`),
+    title: "speech",
+    type: "audio",
+  };
+}

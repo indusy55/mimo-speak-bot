@@ -50,13 +50,13 @@ export type VoiceSourceInfo = {
   mimeType: string;
 };
 
-export const readVoiceSourceExtension = ({
+export function readVoiceSourceExtension({
   fileName,
   mimeType,
 }: {
   fileName?: string;
   mimeType?: string;
-}): VoiceSourceExtension | undefined => {
+}): VoiceSourceExtension | undefined {
   const fromName = fileName ? extname(fileName.trim().toLowerCase()) : "";
 
   if (fromName) {
@@ -74,28 +74,28 @@ export const readVoiceSourceExtension = ({
   }
 
   return readKnownExtension(mimeType);
-};
+}
 
-export const readVoiceSourceMimeType = (extension: VoiceSourceExtension) => {
+export function readVoiceSourceMimeType(extension: VoiceSourceExtension) {
   return mime.getType(extension) ?? "application/octet-stream";
-};
+}
 
-export const assertVoiceSourceBuffer = async (
+export async function assertVoiceSourceBuffer(
   buffer: Buffer,
   mimeType: string,
-) => {
+) {
   await readVoiceSourceInfo({
     buffer,
     extension: readVoiceSourceExtension({ mimeType }) ?? ".bin",
     mimeType,
   });
-};
+}
 
-export const readVoiceSourceInfo = async ({
+export async function readVoiceSourceInfo({
   buffer,
   extension,
   mimeType,
-}: VoiceSourceUpload): Promise<VoiceSourceInfo> => {
+}: VoiceSourceUpload): Promise<VoiceSourceInfo> {
   try {
     const metadata = await parseBuffer(buffer, mimeType, {
       duration: true,
@@ -134,20 +134,20 @@ export const readVoiceSourceInfo = async ({
 
     throw new Error("Failed to read media metadata.");
   }
-};
+}
 
-export const assertVoiceSourceSize = (
+export function assertVoiceSourceSize(
   fileSize: number | undefined,
   maxBytes: number,
-) => {
+) {
   if (fileSize !== undefined && fileSize > maxBytes) {
     throw new Error(
       `Voice source file is too large. Maximum allowed size is ${maxBytes} bytes.`,
     );
   }
-};
+}
 
-const readKnownExtension = (mimeType: string) => {
+function readKnownExtension(mimeType: string) {
   const normalized = mimeType.trim().toLowerCase();
 
   if (normalized === "audio/x-m4a") {
@@ -171,4 +171,4 @@ const readKnownExtension = (mimeType: string) => {
   }
 
   return undefined;
-};
+}

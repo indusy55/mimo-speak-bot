@@ -22,35 +22,37 @@ export type VoiceSourceTranscoder = {
   transform: (file: VoiceSourceUpload) => Promise<VoiceSourceFile>;
 };
 
-export const createVoiceSourceTranscoder = ({
+export function createVoiceSourceTranscoder({
   ffmpegPath,
 }: {
   ffmpegPath?: string;
-} = {}): VoiceSourceTranscoder => ({
-  transform: async (file) => {
-    const info = await readVoiceSourceInfo(file);
-    const extension = normalizeExtension(info.extension);
-    const shouldTrim =
-      info.durationSeconds !== undefined &&
-      info.durationSeconds > maxVoiceSourceSeconds;
+} = {}): VoiceSourceTranscoder {
+  return {
+    transform: async (file) => {
+      const info = await readVoiceSourceInfo(file);
+      const extension = normalizeExtension(info.extension);
+      const shouldTrim =
+        info.durationSeconds !== undefined &&
+        info.durationSeconds > maxVoiceSourceSeconds;
 
-    if (storedVoiceSourceExtensions.has(extension) && !shouldTrim) {
-      return {
+      if (storedVoiceSourceExtensions.has(extension) && !shouldTrim) {
+        return {
+          buffer: file.buffer,
+          extension: extension as VoiceSourceFile["extension"],
+        };
+      }
+
+      return transcodeToWav({
         buffer: file.buffer,
-        extension: extension as VoiceSourceFile["extension"],
-      };
-    }
+        extension,
+        ffmpegPath: resolveFfmpegPath(ffmpegPath),
+        maxSeconds: maxVoiceSourceSeconds,
+      });
+    },
+  };
+}
 
-    return transcodeToWav({
-      buffer: file.buffer,
-      extension,
-      ffmpegPath: resolveFfmpegPath(ffmpegPath),
-      maxSeconds: maxVoiceSourceSeconds,
-    });
-  },
-});
-
-const transcodeToWav = async ({
+async function transcodeToWav({
   buffer,
   extension,
   ffmpegPath,
@@ -60,7 +62,7 @@ const transcodeToWav = async ({
   extension: string;
   ffmpegPath: string;
   maxSeconds: number;
-}): Promise<VoiceSourceFile> => {
+}): Promise<VoiceSourceFile> {
   const tempDir = await mkdtemp(join(tmpdir(), "sp-bot-voice-source-"));
   const inputPath = join(tempDir, `input${extension}`);
   const outputPath = join(tempDir, `output${outputExtension}`);
@@ -102,9 +104,9 @@ const transcodeToWav = async ({
   } finally {
     await removeTempDir(tempDir);
   }
-};
+}
 
-const removeTempDir = async (tempDir: string) => {
+async function removeTempDir(tempDir: string) {
   try {
     await rm(tempDir, {
       force: true,
@@ -113,14 +115,14 @@ const removeTempDir = async (tempDir: string) => {
   } catch {
     // Best-effort cleanup for temporary transform files.
   }
-};
+}
 
-const normalizeExtension = (extension: string) => {
+function normalizeExtension(extension: string) {
   const normalized = extension.trim().toLowerCase();
   return normalized.length > 0 ? normalized : ".bin";
-};
+}
 
-const resolveFfmpegPath = (ffmpegPath?: string) => {
+function resolveFfmpegPath(ffmpegPath?: string) {
   const configured = ffmpegPath?.trim();
 
   if (configured) {
@@ -128,9 +130,9 @@ const resolveFfmpegPath = (ffmpegPath?: string) => {
   }
 
   return process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
-};
+}
 
-const toTranscodeError = (error: unknown) => {
+function toTranscodeError(error: unknown) {
   const stderr =
     error instanceof Error && "stderr" in error && typeof error.stderr === "string"
       ? error.stderr
@@ -148,9 +150,9 @@ const toTranscodeError = (error: unknown) => {
   }
 
   return new Error("Failed to transform voice source.");
-};
+}
 
-const summarizeFfmpegStderr = (stderr: string) => {
+function summarizeFfmpegStderr(stderr: string) {
   const normalized = stderr.trim();
 
   if (normalized.length === 0) {
@@ -179,9 +181,9 @@ const summarizeFfmpegStderr = (stderr: string) => {
   return meaningfulLine
     ? `Failed to transform voice source: ${truncateText(meaningfulLine)}`
     : "Failed to transform voice source.";
-};
+}
 
-const truncateText = (value: string, maxLength = 160) => {
+function truncateText(value: string, maxLength = 160) {
   const normalized = value.replace(/\s+/g, " ").trim();
 
   if (normalized.length <= maxLength) {
@@ -189,4 +191,4 @@ const truncateText = (value: string, maxLength = 160) => {
   }
 
   return `${normalized.slice(0, maxLength - 3)}...`;
-};
+}

@@ -3,8 +3,8 @@ import type { TtsResult } from "../tts/api.js";
 
 const maxTelegramCaptionLength = 1024;
 
-export const replyOptions = (ctx: Context, replyToMessageId?: number) =>
-  ctx.chat?.type === "private"
+export function replyOptions(ctx: Context, replyToMessageId?: number) {
+  return ctx.chat?.type === "private"
     ? {}
     : replyToMessageId !== undefined
       ? {
@@ -19,19 +19,21 @@ export const replyOptions = (ctx: Context, replyToMessageId?: number) =>
             },
           }
         : {};
+}
 
-export const replyText = (
+export function replyText(
   ctx: Context,
   text: string,
   replyToMessageId?: number,
   extra?: Parameters<Context["reply"]>[1],
-) =>
-  ctx.reply(text, {
+) {
+  return ctx.reply(text, {
     ...replyOptions(ctx, replyToMessageId),
     ...(extra ?? {}),
   });
+}
 
-export const replySpeechAudio = (
+export function replySpeechAudio(
   ctx: Context,
   result: TtsResult,
   {
@@ -47,8 +49,8 @@ export const replySpeechAudio = (
     replyToMessageId?: number;
     title: string;
   },
-) =>
-  ctx.replyWithAudio(
+) {
+  return ctx.replyWithAudio(
     new InputFile(result.audio.buffer, `speech.${result.audio.format}`),
     {
       ...(caption ? { caption: trimCaption(caption) } : {}),
@@ -57,8 +59,9 @@ export const replySpeechAudio = (
       title,
     },
   );
+}
 
-export const replyAudioButton = (
+export function replyAudioButton(
   ctx: Context,
   result: TtsResult,
   {
@@ -74,8 +77,8 @@ export const replyAudioButton = (
     replyToMessageId?: number;
     title: string;
   },
-) =>
-  ctx.replyWithAudio(
+) {
+  return ctx.replyWithAudio(
     new InputFile(result.audio.buffer, `speech.${result.audio.format}`),
     {
       ...(caption ? { caption: trimCaption(caption) } : {}),
@@ -84,8 +87,10 @@ export const replyAudioButton = (
       title,
     },
   );
+}
 
-export const trimCaption = (caption: string) =>
-  caption.length <= maxTelegramCaptionLength
+export function trimCaption(caption: string) {
+  return caption.length <= maxTelegramCaptionLength
     ? caption
     : caption.slice(0, maxTelegramCaptionLength);
+}

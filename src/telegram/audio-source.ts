@@ -36,58 +36,65 @@ export type TelegramAudioSource = {
   readUpload: (message: Message) => TelegramAudioUpload | undefined;
 };
 
-export const createTelegramAudioSource = ({
+export function createTelegramAudioSource({
   env,
   files,
 }: {
   env: Pick<Env, "TELEGRAM_MEDIA_MAX_BYTES">;
   files: TelegramFiles;
-}): TelegramAudioSource => ({
-  download: async (message, options) => {
-    const upload = readUpload(message);
+}): TelegramAudioSource {
+  return {
+    download: async (message, options) => {
+      const upload = readUpload(message);
 
-    if (!upload) {
-      throw new Error(
-        "Please send a voice message, audio file, or common audio/video document.",
+      if (!upload) {
+        throw new Error(
+          "Please send a voice message, audio file, or common audio/video document.",
+        );
+      }
+
+      const meta = await files.meta(upload.fileId);
+      assertVoiceSourceSize(
+        upload.fileSize ?? meta.fileSize,
+        env.TELEGRAM_MEDIA_MAX_BYTES,
       );
-    }
 
-    const meta = await files.meta(upload.fileId);
-    assertVoiceSourceSize(
-      upload.fileSize ?? meta.fileSize,
-      env.TELEGRAM_MEDIA_MAX_BYTES,
-    );
+      const buffer = await downloadAudio(
+        files,
+        upload.fileId,
+        meta.filePath,
+        options,
+      );
 
-    const buffer = await downloadAudio(files, upload.fileId, meta.filePath, options);
+      if (buffer.byteLength === 0) {
+        throw new Error("The uploaded audio file is empty.");
+      }
 
-    if (buffer.byteLength === 0) {
-      throw new Error("The uploaded audio file is empty.");
-    }
+      assertVoiceSourceSize(buffer.byteLength, env.TELEGRAM_MEDIA_MAX_BYTES);
 
-    assertVoiceSourceSize(buffer.byteLength, env.TELEGRAM_MEDIA_MAX_BYTES);
+      const info = await readVoiceSourceInfo({
+        buffer,
+        extension: upload.extension,
+        mimeType: upload.mimeType,
+      });
 
-    const info = await readVoiceSourceInfo({
-      buffer,
-      extension: upload.extension,
-      mimeType: upload.mimeType,
-    });
+      return {
+        buffer,
+        extension: info.extension,
+        mimeType: info.mimeType,
+        source: upload.source,
+      };
+    },
+    readUpload,
+  };
+}
 
-    return {
-      buffer,
-      extension: info.extension,
-      mimeType: info.mimeType,
-      source: upload.source,
-    };
-  },
-  readUpload,
-});
-
-const downloadAudio = async (
+async function downloadAudio(
   files: TelegramFiles,
   fileId: string,
   filePath: string,
   options?: RequestOptions,
-) => {
+) {
   const signal = createRequestSignal(options ?? {});
 
   try {
@@ -114,9 +121,9 @@ const downloadAudio = async (
   } finally {
     signal?.dispose();
   }
-};
+}
 
-const readUpload = (message: Message): TelegramAudioUpload | undefined => {
+function readUpload(message: Message): TelegramAudioUpload | undefined {
   for (const upload of readUploadCandidates(message)) {
     if (upload) {
       return upload;
@@ -124,7 +131,7 @@ const readUpload = (message: Message): TelegramAudioUpload | undefined => {
   }
 
   return undefined;
-};
+}
 
 function* readUploadCandidates(
   message: Message,
@@ -135,7 +142,7 @@ function* readUploadCandidates(
   yield readVideoUpload(message);
 }
 
-const readVoiceUpload = (message: Message): TelegramAudioUpload | undefined => {
+function readVoiceUpload(message: Message): TelegramAudioUpload | undefined {
   if (!("voice" in message) || !message.voice) {
     return undefined;
   }
@@ -147,9 +154,9 @@ const readVoiceUpload = (message: Message): TelegramAudioUpload | undefined => {
     mimeType: message.voice.mime_type ?? "audio/ogg",
     source: "voice",
   };
-};
+}
 
-const readAudioUpload = (message: Message): TelegramAudioUpload | undefined => {
+function readAudioUpload(message: Message): TelegramAudioUpload | undefined {
   if (!("audio" in message) || !message.audio) {
     return undefined;
   }
@@ -161,11 +168,11 @@ const readAudioUpload = (message: Message): TelegramAudioUpload | undefined => {
     ...(message.audio.mime_type ? { mimeType: message.audio.mime_type } : {}),
     source: "audio",
   });
-};
+}
 
-const readDocumentUpload = (
+function readDocumentUpload(
   message: Message,
-): TelegramAudioUpload | undefined => {
+): TelegramAudioUpload | undefined {
   if (!("document" in message) || !message.document) {
     return undefined;
   }
@@ -183,9 +190,9 @@ const readDocumentUpload = (
       : {}),
     source: "document",
   });
-};
+}
 
-const readVideoUpload = (message: Message): TelegramAudioUpload | undefined => {
+function readVideoUpload(message: Message): TelegramAudioUpload | undefined {
   if (!("video" in message) || !message.video) {
     return undefined;
   }
@@ -197,9 +204,9 @@ const readVideoUpload = (message: Message): TelegramAudioUpload | undefined => {
     ...(message.video.mime_type ? { mimeType: message.video.mime_type } : {}),
     source: "video",
   });
-};
+}
 
-const readFileUpload = ({
+function readFileUpload({
   fileId,
   fileName,
   fileSize,
@@ -211,7 +218,7 @@ const readFileUpload = ({
   fileSize?: number;
   mimeType?: string;
   source: TelegramAudioUpload["source"];
-}): TelegramAudioUpload | undefined => {
+}): TelegramAudioUpload | undefined {
   const extension = readVoiceSourceExtension({
     ...(fileName ? { fileName } : {}),
     ...(mimeType ? { mimeType } : {}),
@@ -228,4 +235,4 @@ const readFileUpload = ({
     mimeType: mimeType ?? readVoiceSourceMimeType(extension),
     source,
   };
-};
+}

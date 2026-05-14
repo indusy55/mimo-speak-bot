@@ -3,9 +3,8 @@ import type { Env } from "../../core/env.js";
 import type { Log } from "../../core/log.js";
 import { replyText } from "../reply.js";
 
-export const createAdminOnly =
-  (env: Pick<Env, "ADMIN_IDS">, log: Log) =>
-  async (ctx: Context, next: () => Promise<void>) => {
+export function createAdminOnly(env: Pick<Env, "ADMIN_IDS">, log: Log) {
+  async function adminOnly(ctx: Context, next: () => Promise<void>) {
     if (env.ADMIN_IDS.length === 0) {
       await next();
       return;
@@ -23,4 +22,7 @@ export const createAdminOnly =
       "blocked admin-only command",
     );
     await replyText(ctx, "Permission denied.");
-  };
+  }
+
+  return adminOnly;
+}

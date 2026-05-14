@@ -109,8 +109,9 @@ export function registerSpeakCommands({
         errorMessage: "语音合成失败",
         queue,
         react: {
-          error: "👀",
-          success: "👍",
+          error: "💊",
+          pending: "👀",
+          success: "👌",
         },
         ...(payload.replyToMessageId !== undefined
           ? { replyToMessageId: payload.replyToMessageId }
@@ -246,8 +247,9 @@ async function handleSpeakCommand({
       errorMessage: "语音合成失败",
       queue,
       react: {
-        error: "👀",
-        success: "👍",
+        error: "💊",
+        pending: "👀",
+        success: "👌",
       },
     },
     async () => {

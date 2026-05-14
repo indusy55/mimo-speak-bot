@@ -11,6 +11,7 @@ export type BotTaskOptions = {
   queue?: Queue;
   react?: {
     error: Parameters<Context["react"]>[0];
+    pending: Parameters<Context["react"]>[0];
     success: Parameters<Context["react"]>[0];
   };
   replyToMessageId?: number;
@@ -32,6 +33,10 @@ export async function runBotTask<T>(
   task: () => Promise<T>,
 ): Promise<BotTaskResult<T>> {
   try {
+    if (options.react && ctx.chat) {
+      await react(ctx, log, options.react.pending);
+    }
+
     const run = () => task();
     const value =
       options.queue && ctx.chat?.type === "private"

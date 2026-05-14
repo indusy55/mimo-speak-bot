@@ -26,10 +26,7 @@ export function registerInlineQuery({
     }
 
     try {
-      const results = await buildInlineResults({
-        text,
-        voiceSources,
-      });
+      const results = await buildInlineResults(voiceSources);
 
       await ctx.answerInlineQuery(results, {
         cache_time: 0,
@@ -58,8 +55,9 @@ export function registerInlineQuery({
     }
 
     const chosen = parseInlineResultId(ctx.chosenInlineResult.result_id);
+    const text = ctx.chosenInlineResult.query.trim();
 
-    if (!chosen) {
+    if (!chosen || !text) {
       return;
     }
 
@@ -70,19 +68,20 @@ export function registerInlineQuery({
         errorMessage: "内联语音合成失败",
         queue,
         react: {
-          error: "👀",
-          success: "👍",
+          error: "💊",
+          pending: "👀",
+          success: "👌",
         },
       },
       async () => {
         const result =
           chosen.kind === "clone"
             ? await tts.clone({
-                text: chosen.text,
+                text,
                 voice: chosen.voice,
               })
             : await tts.preset({
-                text: chosen.text,
+                text,
                 voice: chosen.voice,
               });
 
@@ -95,26 +94,18 @@ export function registerInlineQuery({
   });
 }
 
-async function buildInlineResults({
-  text,
-  voiceSources,
-}: {
-  text: string;
-  voiceSources: VoiceSourceService;
-}) {
+async function buildInlineResults(voiceSources: VoiceSourceService) {
   const presetResults = presetVoices.map((voice) =>
     buildInlineResult({
       kind: "preset",
-      text,
-      title: `预置 · ${voice.label}`,
+      title: voice.label,
       voice: voice.value,
     }),
   );
   const sourceResults = (await voiceSources.list()).map((source) =>
     buildInlineResult({
       kind: "clone",
-      text,
-      title: `声音源 · ${source.name}`,
+      title: source.name,
       voice: source.name,
     }),
   );
@@ -124,24 +115,20 @@ async function buildInlineResults({
 
 function buildInlineResult({
   kind,
-  text,
   title,
   voice,
 }: {
   kind: "clone" | "preset";
-  text: string;
   title: string;
   voice: string;
 }) {
   return {
-    description: text,
     id: buildInlineResultId({
       kind,
-      text,
       voice,
     }),
     input_message_content: {
-      message_text: text,
+      message_text: " ",
     },
     title,
     type: "article" as const,
@@ -150,16 +137,14 @@ function buildInlineResult({
 
 function buildInlineResultId({
   kind,
-  text,
   voice,
 }: {
   kind: "clone" | "preset";
-  text: string;
   voice: string;
 }) {
-  return Buffer.from(JSON.stringify({ kind, text, voice }), "utf8")
-    .toString("base64url")
-    .slice(0, 64);
+  return Buffer.from(JSON.stringify({ kind, voice }), "utf8").toString(
+    "base64url",
+  );
 }
 
 function parseInlineResultId(resultId: string) {
@@ -170,7 +155,6 @@ function parseInlineResultId(resultId: string) {
       !raw ||
       typeof raw !== "object" ||
       (raw.kind !== "clone" && raw.kind !== "preset") ||
-      typeof raw.text !== "string" ||
       typeof raw.voice !== "string"
     ) {
       return undefined;
@@ -178,7 +162,6 @@ function parseInlineResultId(resultId: string) {
 
     return {
       kind: raw.kind as "clone" | "preset",
-      text: raw.text,
       voice: raw.voice,
     };
   } catch {

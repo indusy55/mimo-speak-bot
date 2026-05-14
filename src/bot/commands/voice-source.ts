@@ -143,8 +143,9 @@ export function registerVoiceSourceCommands({
       {
         errorMessage: "保存声音源失败",
         react: {
-          error: "👀",
-          success: "👍",
+          error: "💊",
+          pending: "👀",
+          success: "👌",
         },
       },
       async () => {

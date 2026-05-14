@@ -101,6 +101,7 @@ export function registerSpeakCommands({
     }
 
     await ctx.answerCallbackQuery();
+    await ctx.editMessageReplyMarkup();
 
     const result = await runBotTask(
       ctx,

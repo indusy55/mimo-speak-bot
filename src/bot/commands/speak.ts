@@ -3,7 +3,6 @@ import { presetVoices } from "../../tts/preset-voices.js";
 import { defaultPresetVoiceId } from "../../tts/preset-voices.js";
 import type { TtsService } from "../../tts/service.js";
 import type { Log } from "../../core/log.js";
-import type { ChatQueue } from "../queue.js";
 import { buildVoiceSelectKeyboard } from "../buttons.js";
 import {
   parseSpeakCommand,
@@ -20,12 +19,11 @@ type SpeakKind = "clone" | "design" | "preset";
 export function registerSpeakCommands({
   bot,
   log,
-  queue,
   voiceSelectStore,
   tts,
 }: Pick<
   CommandDeps,
-  "bot" | "log" | "queue" | "tts" | "voiceSelectStore"
+  "bot" | "log" | "tts" | "voiceSelectStore"
 >) {
   bot.command("sp", async (ctx) => {
     await handleSpeakCommand({
@@ -33,7 +31,6 @@ export function registerSpeakCommands({
       ctx,
       kind: "preset",
       log,
-      queue,
       tts,
       usage: "用法：/sp (音色) [指令] {风格} 文本",
     });
@@ -45,7 +42,6 @@ export function registerSpeakCommands({
       ctx,
       kind: "clone",
       log,
-      queue,
       tts,
       usage: "用法：/sc (音色) [指令] {风格} 文本",
     });
@@ -66,7 +62,6 @@ export function registerSpeakCommands({
       ctx,
       kind: "design",
       log,
-      queue,
       tts,
       usage: "用法：/sd (音色提示) 文本",
     });
@@ -103,43 +98,13 @@ export function registerSpeakCommands({
     await ctx.answerCallbackQuery();
     await ctx.editMessageReplyMarkup();
 
-    const taskPromise = (async () => {
-      const result = await runBotTask(
-        ctx,
-        log,
-        {
-          errorMessage: "语音合成失败",
-          queue,
-          react: {
-            error: "💊",
-            pending: "👀",
-            success: "👌",
-          },
-          ...(payload.replyToMessageId !== undefined
-            ? { replyToMessageId: payload.replyToMessageId }
-            : {}),
-        },
-        async () =>
-          tts.preset({
-            ...(payload.instruction ? { instruction: payload.instruction } : {}),
-            ...(payload.style ? { style: payload.style } : {}),
-            text: payload.text,
-            voice: voice.value,
-          }),
-      );
-
-      if (!result.ok) {
-        return;
-      }
-
-      await replySpeechAudio(ctx, result.value, {
-        caption: `预置：${voice.label}`,
-        ...(payload.replyToMessageId !== undefined
-          ? { replyToMessageId: payload.replyToMessageId }
-          : {}),
-        title: "语音",
-      });
-    })();
+    const taskPromise = handleVoiceSelectTask({
+      ctx,
+      log,
+      payload,
+      tts,
+      voice,
+    });
 
     observeBackgroundTask(ctx, log, taskPromise, "后台语音任务执行失败");
   });
@@ -201,7 +166,6 @@ async function handleSpeakCommand({
   ctx,
   kind,
   log,
-  queue,
   tts,
   usage,
 }: {
@@ -209,7 +173,6 @@ async function handleSpeakCommand({
   ctx: Context;
   kind: SpeakKind;
   log: Log;
-  queue: ChatQueue;
   tts: TtsService;
   usage: string;
 }) {
@@ -250,7 +213,6 @@ async function handleSpeakCommand({
     log,
     {
       errorMessage: "语音合成失败",
-      queue,
       react: {
         error: "💊",
         pending: "👀",
@@ -273,6 +235,60 @@ async function handleSpeakCommand({
   );
 
   observeBackgroundTask(ctx, log, taskPromise, "后台语音任务执行失败");
+}
+
+async function handleVoiceSelectTask({
+  ctx,
+  log,
+  payload,
+  tts,
+  voice,
+}: {
+  ctx: Context;
+  log: Log;
+  payload: {
+    instruction?: string;
+    replyToMessageId?: number;
+    style?: string;
+    text: string;
+  };
+  tts: TtsService;
+  voice: (typeof presetVoices)[number];
+}) {
+  const result = await runBotTask(
+    ctx,
+    log,
+    {
+      errorMessage: "语音合成失败",
+      react: {
+        error: "💊",
+        pending: "👀",
+        success: "👌",
+      },
+      ...(payload.replyToMessageId !== undefined
+        ? { replyToMessageId: payload.replyToMessageId }
+        : {}),
+    },
+    async () =>
+      tts.preset({
+        ...(payload.instruction ? { instruction: payload.instruction } : {}),
+        ...(payload.style ? { style: payload.style } : {}),
+        text: payload.text,
+        voice: voice.value,
+      }),
+  );
+
+  if (!result.ok) {
+    return;
+  }
+
+  await replySpeechAudio(ctx, result.value, {
+    caption: `预置：${voice.label}`,
+    ...(payload.replyToMessageId !== undefined
+      ? { replyToMessageId: payload.replyToMessageId }
+      : {}),
+    title: "语音",
+  });
 }
 
 function synthesize({

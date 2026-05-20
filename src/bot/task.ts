@@ -2,13 +2,8 @@ import type { Context } from "grammy";
 import type { Log } from "../core/log.js";
 import { replyText } from "./reply.js";
 
-type Queue = {
-  run: <T>(key: number, task: () => Promise<T>) => Promise<T>;
-};
-
 export type BotTaskOptions = {
   errorMessage: string;
-  queue?: Queue;
   react?: {
     error: Parameters<Context["react"]>[0];
     pending: Parameters<Context["react"]>[0];
@@ -37,11 +32,7 @@ export async function runBotTask<T>(
       await react(ctx, log, options.react.pending);
     }
 
-    const run = () => task();
-    const value =
-      options.queue && ctx.chat?.type === "private"
-        ? await options.queue.run(ctx.chat.id, run)
-        : await run();
+    const value = await task();
 
     if (options.react && ctx.chat) {
       await react(ctx, log, options.react.success);

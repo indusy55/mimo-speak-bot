@@ -1,6 +1,5 @@
 import { Bot, BotError } from "grammy";
 import { registerCommands, registerInlineQuery } from "./bot/command.js";
-import { createChatQueue } from "./bot/queue.js";
 import { createUploadSessions } from "./bot/upload-session.js";
 import { createVoiceSelectStore } from "./bot/voice-select-store.js";
 import { loadEnv } from "./core/env.js";
@@ -17,7 +16,6 @@ export async function bootstrap() {
   const env = loadEnv();
 
   const bot = new Bot(env.TELEGRAM_BOT_TOKEN);
-  const queue = createChatQueue();
   const uploadSessions = createUploadSessions();
   const voiceSelectStore = createVoiceSelectStore();
   const voiceSourceStore = createVoiceSourceStore({ env });
@@ -43,7 +41,6 @@ export async function bootstrap() {
     bot,
     env,
     log,
-    queue,
     telegramAudioSource,
     tts,
     uploadSessions,

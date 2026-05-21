@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { InlineQueryResultArticle } from "grammy/types";
+import { defaultPresetVoiceId } from "../../tts/preset-voices.js";
 import { presetVoices } from "../../tts/preset-voices.js";
 import type { VoiceSourceService } from "../../voice/service.js";
 import type { InlineDeps } from "./types.js";
@@ -55,6 +56,7 @@ async function buildInlineResults({
       kind: "preset",
       queryText,
       title: defaultPresetTitle,
+      voiceName: defaultPresetVoiceId,
     }),
   ];
 
@@ -154,6 +156,14 @@ function buildCommandText(
   }
 
   return queryText.length > 0
-    ? `${command} (${voiceName}) ${queryText}`
-    : `${command} (${voiceName})`;
+    ? `${command} ${formatCommandArgument(voiceName)} ${queryText}`
+    : `${command} ${formatCommandArgument(voiceName)}`;
+}
+
+function formatCommandArgument(value: string) {
+  if (!value.startsWith("-") && /^\S+$/.test(value)) {
+    return value;
+  }
+
+  return `"${value.replaceAll("\\", "\\\\").replaceAll("\"", "\\\"")}"`;
 }

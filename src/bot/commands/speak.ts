@@ -1,9 +1,7 @@
 import type { Context } from "grammy";
-import { presetVoices } from "../../tts/preset-voices.js";
 import { defaultPresetVoiceId } from "../../tts/preset-voices.js";
 import type { TtsService } from "../../tts/service.js";
 import type { Log } from "../../core/log.js";
-import { buildVoiceSelectKeyboard } from "../buttons.js";
 import {
   parseSpeakCommand,
   readCommandText,
@@ -19,11 +17,10 @@ type SpeakKind = "clone" | "design" | "preset";
 export function registerSpeakCommands({
   bot,
   log,
-  voiceSelectStore,
   tts,
 }: Pick<
   CommandDeps,
-  "bot" | "log" | "tts" | "voiceSelectStore"
+  "bot" | "log" | "tts"
 >) {
   bot.command("sp", async (ctx) => {
     await handleSpeakCommand({
@@ -32,7 +29,7 @@ export function registerSpeakCommands({
       kind: "preset",
       log,
       tts,
-      usage: "用法：/sp (音色) [指令] {风格} 文本",
+      usage: "用法：/sp 音色 [-s 风格] [-i 提示词] 文本",
     });
   });
 
@@ -43,16 +40,7 @@ export function registerSpeakCommands({
       kind: "clone",
       log,
       tts,
-      usage: "用法：/sc (音色) [指令] {风格} 文本",
-    });
-  });
-
-  bot.command("ss", async (ctx) => {
-    await handleSelectSpeakCommand({
-      ctx,
-      log,
-      usage: "用法：/ss 回复一条消息后选择音色",
-      voiceSelectStore,
+      usage: "用法：/sc 音色 [-s 风格] [-i 提示词] 文本",
     });
   });
 
@@ -63,101 +51,8 @@ export function registerSpeakCommands({
       kind: "design",
       log,
       tts,
-      usage: "用法：/sd (音色提示) 文本",
+      usage: "用法：/sd 音色设计描述 [-s 风格] [-i 提示词] 文本",
     });
-  });
-
-  bot.callbackQuery(/^ss:([^:]+):(\d+)$/, async (ctx) => {
-    const match = ctx.callbackQuery.data.match(/^ss:([^:]+):(\d+)$/);
-
-    if (!match) {
-      await ctx.answerCallbackQuery();
-      return;
-    }
-
-    const sessionId = match[1]!;
-    const voiceIndex = Number(match[2]);
-    const payload = voiceSelectStore.read(sessionId);
-
-    if (
-      !payload ||
-      !Number.isInteger(voiceIndex) ||
-      voiceIndex < 0
-    ) {
-      await ctx.answerCallbackQuery("已过期");
-      return;
-    }
-
-    const voice = presetVoices[voiceIndex];
-
-    if (!voice) {
-      await ctx.answerCallbackQuery("已过期");
-      return;
-    }
-
-    await ctx.answerCallbackQuery();
-    await ctx.editMessageReplyMarkup();
-
-    const taskPromise = handleVoiceSelectTask({
-      ctx,
-      log,
-      payload,
-      tts,
-      voice,
-    });
-
-    observeBackgroundTask(ctx, log, taskPromise, "后台语音任务执行失败");
-  });
-}
-
-async function handleSelectSpeakCommand({
-  ctx,
-  log,
-  usage,
-  voiceSelectStore,
-}: {
-  ctx: Context;
-  log: Log;
-  usage: string;
-  voiceSelectStore: CommandDeps["voiceSelectStore"];
-}) {
-  const message = ctx.message;
-  const commandText = readCommandText(ctx);
-
-  if (!message || !commandText) {
-    return;
-  }
-
-  const params = parseSpeakCommand({
-    command: "ss",
-    text: commandText,
-  });
-
-  if (!params) {
-    await replyText(ctx, usage);
-    return;
-  }
-
-  const text = resolveSpeakText({
-    message,
-    params,
-  });
-
-  if (!text) {
-    await replyText(ctx, usage);
-    return;
-  }
-
-  const replyToMessageId = message.reply_to_message?.message_id ?? message.message_id;
-  const sessionId = voiceSelectStore.save({
-    ...(params.instruction ? { instruction: params.instruction } : {}),
-    ...(params.style ? { style: params.style } : {}),
-    replyToMessageId,
-    text,
-  });
-
-  await replyText(ctx, "选择音色", replyToMessageId, {
-    reply_markup: buildVoiceSelectKeyboard(sessionId),
   });
 }
 
@@ -193,7 +88,7 @@ async function handleSpeakCommand({
     return;
   }
 
-  if (kind !== "preset" && !params.voice?.trim()) {
+  if (!params.voice?.trim()) {
     await replyText(ctx, usage);
     return;
   }
@@ -237,60 +132,6 @@ async function handleSpeakCommand({
   observeBackgroundTask(ctx, log, taskPromise, "后台语音任务执行失败");
 }
 
-async function handleVoiceSelectTask({
-  ctx,
-  log,
-  payload,
-  tts,
-  voice,
-}: {
-  ctx: Context;
-  log: Log;
-  payload: {
-    instruction?: string;
-    replyToMessageId?: number;
-    style?: string;
-    text: string;
-  };
-  tts: TtsService;
-  voice: (typeof presetVoices)[number];
-}) {
-  const result = await runBotTask(
-    ctx,
-    log,
-    {
-      errorMessage: "语音合成失败",
-      react: {
-        error: "💊",
-        pending: "👀",
-        success: "👌",
-      },
-      ...(payload.replyToMessageId !== undefined
-        ? { replyToMessageId: payload.replyToMessageId }
-        : {}),
-    },
-    async () =>
-      tts.preset({
-        ...(payload.instruction ? { instruction: payload.instruction } : {}),
-        ...(payload.style ? { style: payload.style } : {}),
-        text: payload.text,
-        voice: voice.value,
-      }),
-  );
-
-  if (!result.ok) {
-    return;
-  }
-
-  await replySpeechAudio(ctx, result.value, {
-    caption: `预置：${voice.label}`,
-    ...(payload.replyToMessageId !== undefined
-      ? { replyToMessageId: payload.replyToMessageId }
-      : {}),
-    title: "语音",
-  });
-}
-
 function synthesize({
   kind,
   params,
@@ -313,7 +154,9 @@ function synthesize({
 
   if (kind === "design") {
     return tts.design({
+      ...(params.instruction ? { instruction: params.instruction } : {}),
       prompt: params.voice ?? "",
+      ...(params.style ? { style: params.style } : {}),
       text,
     });
   }

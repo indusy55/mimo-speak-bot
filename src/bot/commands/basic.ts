@@ -6,7 +6,6 @@ export const commands = [
   { command: "sp", description: "预置音色朗读" },
   { command: "sc", description: "声音源朗读" },
   { command: "sd", description: "设计音色朗读" },
-  { command: "ss", description: "选择音色朗读" },
   { command: "vp", description: "查看预置音色" },
   { command: "vs", description: "查看声音源" },
   { command: "va", description: "添加声音源" },
@@ -16,10 +15,9 @@ export const commands = [
 const startText = [
   "TTS AI BOT",
   "",
-  "/sp (冰糖) 文本",
-  "/sc (马保国) 文本",
-  "/sd (温柔的女声) 文本",
-  "/ss 回复一条消息后选择音色",
+  "/sp 音色 [-s 风格] [-i 提示词] 文本",
+  "/sc 音色 [-s 风格] [-i 提示词] 文本",
+  "/sd 音色设计描述 [-s 风格] [-i 提示词] 文本",
   "",
   "或带着命令和参数恢复到文本上，也支持 quote",
 ].join("\n");

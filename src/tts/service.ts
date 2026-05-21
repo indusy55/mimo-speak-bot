@@ -12,7 +12,9 @@ export type SpeakInput = {
 };
 
 export type DesignInput = {
+  instruction?: string;
   prompt: string;
+  style?: string;
   text: string;
 };
 
@@ -51,10 +53,12 @@ export function createTtsService({
       );
     },
 
-    design: ({ prompt, text }, options) =>
+    design: ({ instruction, prompt, style, text }, options) =>
       api.design(
         {
+          ...(instruction ? { instruction } : {}),
           prompt,
+          ...(style ? { style } : {}),
           text,
         },
         options,

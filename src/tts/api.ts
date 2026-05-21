@@ -52,7 +52,9 @@ export type CloneSpeechInput = {
 
 export type DesignSpeechInput = {
   format?: AudioFormat;
+  instruction?: string;
   prompt: string;
+  style?: string;
   text: string;
 };
 
@@ -154,7 +156,9 @@ export function createTtsApi({ env }: { env: Pick<Env, "TTS_API_KEY"> }) {
     design: async (
       {
         format = defaultFormat,
+        instruction,
         prompt,
+        style,
         text,
       }: DesignSpeechInput,
       options?: BaseRequestOptions,
@@ -172,12 +176,17 @@ export function createTtsApi({ env }: { env: Pick<Env, "TTS_API_KEY"> }) {
             format,
           },
           messages: [
+            ...(instruction?.trim()
+              ? [{ content: instruction.trim(), role: "user" as const }]
+              : []),
             {
               content: designPrompt,
               role: "user",
             },
             {
-              content: speechText,
+              content: style?.trim()
+                ? `(${style.trim()})${speechText}`
+                : speechText,
               role: "assistant",
             },
           ],

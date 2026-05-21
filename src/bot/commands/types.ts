@@ -5,7 +5,6 @@ import type { TelegramAudioSource } from "../../telegram/audio-source.js";
 import type { TtsService } from "../../tts/service.js";
 import type { VoiceSourceService } from "../../voice/service.js";
 import type { UploadSessions } from "../upload-session.js";
-import type { VoiceSelectStore } from "../voice-select-store.js";
 
 export type CommandDeps = {
   bot: Bot;
@@ -15,7 +14,6 @@ export type CommandDeps = {
   tts: TtsService;
   uploadSessions: UploadSessions;
   voiceSources: VoiceSourceService;
-  voiceSelectStore: VoiceSelectStore;
 };
 
 export type InlineDeps = {

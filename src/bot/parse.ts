@@ -38,56 +38,47 @@ export function parseSpeakCommand({
   }
 
   const params: SpeakParams = {};
-  let rest = body;
+  let rest = body.trim();
 
-  while (rest.startsWith("[") || rest.startsWith("{") || rest.startsWith("(")) {
-    if (rest.startsWith("[")) {
-      const end = rest.indexOf("]");
+  if (!rest.startsWith("-")) {
+    const voice = readNextArgument(rest);
 
-      if (end <= 1) {
-        return undefined;
-      }
-
-      const value = rest.slice(1, end).trim();
-
-      if (value.length > 0) {
-        params.instruction = value;
-      }
-
-      rest = rest.slice(end + 1).trim();
-      continue;
-    }
-
-    if (rest.startsWith("{")) {
-      const end = rest.indexOf("}");
-
-      if (end <= 1) {
-        return undefined;
-      }
-
-      const value = rest.slice(1, end).trim();
-
-      if (value.length > 0) {
-        params.style = value;
-      }
-
-      rest = rest.slice(end + 1).trim();
-      continue;
-    }
-
-    const end = rest.indexOf(")");
-
-    if (end <= 1) {
+    if (!voice || voice.value.length === 0) {
       return undefined;
     }
 
-    const value = rest.slice(1, end).trim();
+    params.voice = voice.value;
+    rest = voice.rest;
+  }
 
-    if (value.length > 0) {
-      params.voice = value;
+  while (rest.startsWith("-")) {
+    const flag = readFlag(rest);
+
+    if (!flag) {
+      return undefined;
     }
 
-    rest = rest.slice(end + 1).trim();
+    if (flag.name !== "s" && flag.name !== "i") {
+      return undefined;
+    }
+
+    const value = readNextArgument(flag.rest);
+
+    if (!value || (!value.quoted && value.value.startsWith("-"))) {
+      return undefined;
+    }
+
+    if (value.value.length === 0) {
+      return undefined;
+    }
+
+    if (flag.name === "s") {
+      params.style = value.value;
+    } else {
+      params.instruction = value.value;
+    }
+
+    rest = value.rest;
   }
 
   if (
@@ -105,6 +96,73 @@ export function parseSpeakCommand({
   }
 
   return params;
+}
+
+function readFlag(text: string) {
+  const match = text.match(/^-(\S+)/);
+
+  if (!match) {
+    return undefined;
+  }
+
+  return {
+    name: match[1]!,
+    rest: text.slice(match[0].length).trim(),
+  };
+}
+
+function readNextArgument(text: string) {
+  const source = text.trim();
+
+  if (source.length === 0) {
+    return undefined;
+  }
+
+  const quote = source[0];
+
+  if (quote === "\"" || quote === "'") {
+    let value = "";
+    let escaped = false;
+
+    for (let index = 1; index < source.length; index += 1) {
+      const char = source[index]!;
+
+      if (escaped) {
+        value += char;
+        escaped = false;
+        continue;
+      }
+
+      if (char === "\\") {
+        escaped = true;
+        continue;
+      }
+
+      if (char === quote) {
+        return {
+          quoted: true,
+          rest: source.slice(index + 1).trim(),
+          value: value.trim(),
+        };
+      }
+
+      value += char;
+    }
+
+    return undefined;
+  }
+
+  const match = source.match(/^\S+/);
+
+  if (!match) {
+    return undefined;
+  }
+
+  return {
+    quoted: false,
+    rest: source.slice(match[0].length).trim(),
+    value: match[0].trim(),
+  };
 }
 
 export function resolveSpeakText({

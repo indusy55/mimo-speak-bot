@@ -5,7 +5,6 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import {
   readVoiceSourceInfo,
-  storedVoiceSourceExtensions,
   type VoiceSourceUpload,
 } from "./source.js";
 
@@ -31,17 +30,8 @@ export function createVoiceSourceTranscoder({
     transform: async (file) => {
       const info = await readVoiceSourceInfo(file);
       const extension = normalizeExtension(info.extension);
-      const shouldTrim =
-        info.durationSeconds !== undefined &&
-        info.durationSeconds > maxVoiceSourceSeconds;
-
-      if (storedVoiceSourceExtensions.has(extension) && !shouldTrim) {
-        return {
-          buffer: file.buffer,
-          extension: extension as VoiceSourceFile["extension"],
-        };
-      }
-
+      // MIMO API 未明确文档支持的音频编码，且已知即使常见格式（如 mp3）
+      // 也可能存在兼容问题。统一转码为 WAV（PCM s16le 24kHz 单声道）以确保兼容。
       return transcodeToWav({
         buffer: file.buffer,
         extension,

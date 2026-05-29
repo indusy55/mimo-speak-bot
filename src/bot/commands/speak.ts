@@ -215,7 +215,7 @@ async function handleMultiSpeakCommand({
     async () => {
       const results = await runConcurrent(
         lines,
-        2,
+        1,
         (line) =>
           synthesize({
             kind,

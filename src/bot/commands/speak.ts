@@ -213,8 +213,10 @@ async function handleMultiSpeakCommand({
       },
     },
     async () => {
-      const results = await Promise.all(
-        lines.map((line) =>
+      const results = await runConcurrent(
+        lines,
+        2,
+        (line) =>
           synthesize({
             kind,
             params: {
@@ -225,7 +227,6 @@ async function handleMultiSpeakCommand({
             text: line.text,
             tts,
           }),
-        ),
       );
 
       const merged = await mergeAudioClips(
@@ -244,6 +245,34 @@ async function handleMultiSpeakCommand({
   );
 
   observeBackgroundTask(ctx, log, taskPromise, "后台对话合成失败");
+}
+
+/**
+ * Run async tasks with limited concurrency.
+ */
+async function runConcurrent<T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = [];
+  const queue = items.map((item, index) => ({ item, index }));
+
+  async function worker(): Promise<void> {
+    while (queue.length > 0) {
+      const entry = queue.shift();
+      if (entry) {
+        results[entry.index] = await fn(entry.item);
+      }
+    }
+  }
+
+  const workers = Array.from(
+    { length: Math.min(concurrency, items.length) },
+    () => worker(),
+  );
+  await Promise.all(workers);
+  return results;
 }
 
 function synthesize({

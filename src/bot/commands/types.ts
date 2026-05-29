@@ -8,7 +8,7 @@ import type { UploadSessions } from "../upload-session.js";
 
 export type CommandDeps = {
   bot: Bot;
-  env: Pick<Env, "ADMIN_IDS">;
+  env: Pick<Env, "ADMIN_IDS" | "FFMPEG_PATH">;
   log: Log;
   telegramAudioSource: TelegramAudioSource;
   tts: TtsService;

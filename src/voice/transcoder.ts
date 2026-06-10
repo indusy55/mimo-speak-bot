@@ -7,6 +7,7 @@ import {
   readVoiceSourceInfo,
   type VoiceSourceUpload,
 } from "./source.js";
+import { resolveFfmpegPath, toFfmpegError } from "./ffmpeg.js";
 
 const execFileAsync = promisify(execFile);
 const outputExtension = ".wav";
@@ -90,7 +91,7 @@ async function transcodeToWav({
       extension: outputExtension,
     };
   } catch (error) {
-    throw toTranscodeError(error);
+    throw toFfmpegError(error, "Failed to transform voice source");
   } finally {
     await removeTempDir(tempDir);
   }
@@ -110,75 +111,4 @@ async function removeTempDir(tempDir: string) {
 function normalizeExtension(extension: string) {
   const normalized = extension.trim().toLowerCase();
   return normalized.length > 0 ? normalized : ".bin";
-}
-
-function resolveFfmpegPath(ffmpegPath?: string) {
-  const configured = ffmpegPath?.trim();
-
-  if (configured) {
-    return configured;
-  }
-
-  return process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
-}
-
-function toTranscodeError(error: unknown) {
-  const stderr =
-    error instanceof Error && "stderr" in error && typeof error.stderr === "string"
-      ? error.stderr
-      : undefined;
-  const summarized = stderr ? summarizeFfmpegStderr(stderr) : undefined;
-
-  if (summarized) {
-    return new Error(summarized);
-  }
-
-  if (error instanceof Error && error.message.trim().length > 0) {
-    return new Error(
-      `Failed to transform voice source: ${truncateText(error.message)}`,
-    );
-  }
-
-  return new Error("Failed to transform voice source.");
-}
-
-function summarizeFfmpegStderr(stderr: string) {
-  const normalized = stderr.trim();
-
-  if (normalized.length === 0) {
-    return undefined;
-  }
-
-  if (
-    normalized.includes("Stream map '0:a:0' matches no streams") ||
-    normalized.includes("Output file #0 does not contain any stream")
-  ) {
-    return "Failed to transform voice source: no audio track was found.";
-  }
-
-  if (
-    normalized.includes("Invalid data found when processing input") ||
-    normalized.includes("moov atom not found")
-  ) {
-    return "Failed to transform voice source: the file is damaged or not a supported media format.";
-  }
-
-  const meaningfulLine = normalized
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .find((line) => line.length > 0 && !line.startsWith("["));
-
-  return meaningfulLine
-    ? `Failed to transform voice source: ${truncateText(meaningfulLine)}`
-    : "Failed to transform voice source.";
-}
-
-function truncateText(value: string, maxLength = 160) {
-  const normalized = value.replace(/\s+/g, " ").trim();
-
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-
-  return `${normalized.slice(0, maxLength - 3)}...`;
 }

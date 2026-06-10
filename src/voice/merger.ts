@@ -3,20 +3,11 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import { resolveFfmpegPath, toFfmpegError } from "./ffmpeg.js";
 
 const execFileAsync = promisify(execFile);
 const defaultGapMs = 600;
 const targetSampleRate = 24000;
-
-function resolveFfmpegPath(ffmpegPath?: string) {
-  const configured = ffmpegPath?.trim();
-
-  if (configured) {
-    return configured;
-  }
-
-  return process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
-}
 
 /**
  * Create a silent WAV buffer (PCM s16le mono) of the given duration.
@@ -108,55 +99,10 @@ export async function mergeAudioClips(
 
     return result;
   } catch (error) {
-    throw toMergeError(error);
+    throw toFfmpegError(error, "Failed to merge audio");
   } finally {
     await rm(tempDir, { force: true, recursive: true });
   }
 }
 
-function toMergeError(error: unknown): Error {
-  const stderr =
-    error instanceof Error && "stderr" in error && typeof error.stderr === "string"
-      ? error.stderr
-      : undefined;
-  const summarized = stderr ? summarizeFfmpegStderr(stderr) : undefined;
 
-  if (summarized) {
-    return new Error(summarized);
-  }
-
-  if (error instanceof Error && error.message.trim().length > 0) {
-    return new Error(
-      `Failed to merge audio: ${truncateText(error.message)}`,
-    );
-  }
-
-  return new Error("Failed to merge audio.");
-}
-
-function summarizeFfmpegStderr(stderr: string) {
-  const normalized = stderr.trim();
-
-  if (normalized.length === 0) {
-    return undefined;
-  }
-
-  const meaningfulLine = normalized
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .find((line) => line.length > 0 && !line.startsWith("["));
-
-  return meaningfulLine
-    ? `Failed to merge audio: ${truncateText(meaningfulLine)}`
-    : "Failed to merge audio.";
-}
-
-function truncateText(value: string, maxLength = 160) {
-  const normalized = value.replace(/\s+/g, " ").trim();
-
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-
-  return `${normalized.slice(0, maxLength - 3)}...`;
-}

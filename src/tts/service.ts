@@ -36,7 +36,11 @@ export function createTtsService({
       const voiceSource = voice ? await voiceSources.get(voice) : undefined;
 
       if (!voiceSource) {
-        throw new Error("No voice source is configured.");
+        throw new Error(
+          voice
+            ? `Voice source "${voice}" not found.`
+            : "No voice source specified.",
+        );
       }
 
       return api.clone(

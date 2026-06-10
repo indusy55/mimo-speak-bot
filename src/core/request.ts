@@ -26,6 +26,7 @@ export function createRequestSignal({
   };
 
   if (signal?.aborted) {
+    clearTimeout(timeout);
     abort();
   } else {
     signal?.addEventListener("abort", abort, {

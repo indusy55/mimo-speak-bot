@@ -7,6 +7,19 @@ import type { VoiceSourceFile } from "./transcoder.js";
 
 const invalidVoiceNamePattern = /[<>:"/\\|?*]/;
 
+/**
+ * Windows reserved filenames that cannot be used as file names.
+ * https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+ */
+const windowsReservedNames = new Set([
+  "con",
+  "prn",
+  "aux",
+  "nul",
+  "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
+  "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
+]);
+
 export type VoiceSourceRecord = {
   name: string;
   path: string;
@@ -197,6 +210,10 @@ export function validateName(voiceName: string | undefined) {
     invalidVoiceNamePattern.test(normalizedName) ||
     hasControlCharacters(normalizedName)
   ) {
+    return undefined;
+  }
+
+  if (windowsReservedNames.has(normalizedName.toLowerCase())) {
     return undefined;
   }
 

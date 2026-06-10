@@ -138,7 +138,7 @@ async function handleSpeakCommand({
     return;
   }
 
-  const taskPromise = runBotTask(
+  await runBotTask(
     ctx,
     log,
     {
@@ -163,8 +163,6 @@ async function handleSpeakCommand({
       });
     },
   );
-
-  observeBackgroundTask(ctx, log, taskPromise, "后台语音任务执行失败");
 }
 
 async function handleMultiSpeakCommand({
@@ -201,7 +199,7 @@ async function handleMultiSpeakCommand({
     return;
   }
 
-  const taskPromise = runBotTask(
+  await runBotTask(
     ctx,
     log,
     {
@@ -213,11 +211,11 @@ async function handleMultiSpeakCommand({
       },
     },
     async () => {
-      const results = await runConcurrent(
-        lines,
-        1,
-        (line) =>
-          synthesize({
+      const results: Awaited<ReturnType<typeof synthesize>>[] = [];
+
+      for (const line of lines) {
+        results.push(
+          await synthesize({
             kind,
             params: {
               voice: line.voice,
@@ -227,7 +225,8 @@ async function handleMultiSpeakCommand({
             text: line.text,
             tts,
           }),
-      );
+        );
+      }
 
       const merged = await mergeAudioClips(
         results.map((r) => r.audio.buffer),
@@ -243,36 +242,6 @@ async function handleMultiSpeakCommand({
       });
     },
   );
-
-  observeBackgroundTask(ctx, log, taskPromise, "后台对话合成失败");
-}
-
-/**
- * Run async tasks with limited concurrency.
- */
-async function runConcurrent<T, R>(
-  items: T[],
-  concurrency: number,
-  fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const results: R[] = [];
-  const queue = items.map((item, index) => ({ item, index }));
-
-  async function worker(): Promise<void> {
-    while (queue.length > 0) {
-      const entry = queue.shift();
-      if (entry) {
-        results[entry.index] = await fn(entry.item);
-      }
-    }
-  }
-
-  const workers = Array.from(
-    { length: Math.min(concurrency, items.length) },
-    () => worker(),
-  );
-  await Promise.all(workers);
-  return results;
 }
 
 function synthesize({
@@ -318,29 +287,10 @@ function buildCaption(kind: SpeakKind, voice?: string) {
   }
 
   if (kind === "design") {
-    return `设计：${voice ?? ""}`.trim();
+    return `设计：${voice?.trim() || "未知设计"}`;
   }
 
-  return `声音源：${voice ?? ""}`.trim();
-}
-
-function observeBackgroundTask(
-  ctx: Context,
-  log: Log,
-  task: Promise<unknown>,
-  message: string,
-) {
-  task.catch((error) => {
-    log.error(
-      {
-        chatId: ctx.chat?.id,
-        error,
-        fromId: ctx.from?.id,
-        messageId: ctx.msgId,
-      },
-      message,
-    );
-  });
+  return `声音源：${voice?.trim() || "未知音源"}`;
 }
 
 type MultiLineItem = {

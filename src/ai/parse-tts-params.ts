@@ -17,7 +17,7 @@ const ttsParamsSchema = z.object({
   text: z.string(),
   voice: z.string().nullish(),
   instructions: z.string().nullish(),
-  model: z.enum(modelList).catch(undefined),
+  model: z.string().nullish(),
 });
 
 export type TTSParams = z.infer<typeof ttsParamsSchema>;
@@ -34,10 +34,10 @@ function findClosestClone(voice: string, cloneVoices: string[]): string | undefi
 
 function resolveModel(
   voice: string | undefined,
-  instructions: string | undefined,
-  llmModel: (typeof modelList)[number] | undefined,
+  _instructions: string | undefined,
+  llmModel: string | undefined,
   cloneVoices: string[],
-): (typeof modelList)[number] | undefined {
+): "mimo-v2.5-tts" | "mimo-v2.5-tts-voicedesign" | "mimo-v2.5-tts-voiceclone" | undefined {
   if (voice && cloneVoices.includes(voice)) return modelIds.clone;
   if (voice && presetVoices.includes(voice)) return modelIds.preset;
 
@@ -47,7 +47,11 @@ function resolveModel(
     return modelIds.design;
   }
 
-  return llmModel;
+  if (llmModel && typeof llmModel === "string" && modelList.includes(llmModel as "mimo-v2.5-tts" | "mimo-v2.5-tts-voicedesign" | "mimo-v2.5-tts-voiceclone")) {
+    return llmModel as "mimo-v2.5-tts" | "mimo-v2.5-tts-voicedesign" | "mimo-v2.5-tts-voiceclone";
+  }
+
+  return undefined;
 }
 
 function buildSystemPrompt(cloneVoiceNames: string[]): string {
@@ -205,26 +209,33 @@ export function createTtsParamsParser({
         }
       }
 
-      llmModel = resolveModel(resolvedVoice, instructions, llmModel, cloneVoiceNames);
+      const inst: string | undefined = instructions ?? undefined;
+      const mdl: string | undefined = llmModel ?? undefined;
+      const resolved = resolveModel(resolvedVoice, inst, mdl, cloneVoiceNames);
 
       // voicedesign model does NOT accept a voice parameter
-      if (llmModel === modelIds.design) {
+      if (resolved === modelIds.design) {
         resolvedVoice = undefined;
       }
 
       // Map model ID back to mode enum
-      const mode = llmModel === modelIds.clone
+      const mode = resolved === modelIds.clone
         ? "clone"
-        : llmModel === modelIds.design
+        : resolved === modelIds.design
           ? "design"
           : "preset";
 
-      return {
-        text: parsed.data.text,
-        voice: resolvedVoice,
-        instructions,
-        mode,
-      };
+      const output: {
+        text: string;
+        voice?: string;
+        instructions?: string;
+        mode: "clone" | "design" | "preset";
+      } = { text: parsed.data.text, mode };
+
+      if (resolvedVoice != null) output.voice = resolvedVoice;
+      if (instructions != null) output.instructions = instructions;
+
+      return output;
     },
   };
 }

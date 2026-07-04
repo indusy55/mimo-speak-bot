@@ -73,7 +73,7 @@ export async function bootstrap() {
     log,
     speech,
     telegramAudioSource,
-    ttsParamsParser,
+    ...(ttsParamsParser ? { ttsParamsParser } : {}),
     uploadSessions,
     voiceSources,
   });

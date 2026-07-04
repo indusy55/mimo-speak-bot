@@ -11,7 +11,13 @@ const ttsParamsSchema = z.object({
 
 export type TTSParams = z.infer<typeof ttsParamsSchema>;
 
-const systemPrompt = [
+function buildSystemPrompt(cloneVoiceNames: string[]): string {
+  const presetList = ["冰糖", "茉莉", "苏打", "白桦", "Mia", "Chloe", "Milo", "Dean"];
+  const cloneInfo = cloneVoiceNames.length
+    ? `Clone samples available: ${cloneVoiceNames.join(", ")}`
+    : "(no clone samples available)";
+
+  return [
   "You extract TTS parameters from natural language. Return ONLY valid JSON, no markdown.",
   "",
   `Required field:`,
@@ -21,7 +27,8 @@ const systemPrompt = [
   "",
   `Optional fields:`,
   `  "voice" — ONLY preset or clone name (never a description)`,
-  `    Presets: 冰糖, 茉莉, 苏打, 白桦, Mia, Chloe, Milo, Dean`,
+  `    Presets: ${presetList.join(", ")}`,
+  `    ${cloneInfo}`,
   `    If user mentions a voice or nickname that matches a clone name, use that clone name.`,
   `    Voice design descriptions (e.g. "低沉磁性的男声") go in "instructions", NOT here.`,
   `    Omit if not specified. If instructions describe a custom voice design, voice must be omitted.`,
@@ -85,18 +92,22 @@ const systemPrompt = [
   `  - CRITICAL: dialect (粤语/东北话/四川话/河南话), character voice (御姐音/大叔音/台湾腔),`,
   `    role-play (孙悟空/林黛玉), and singing (唱歌) are GLOBAL tags. They MUST appear at the`,
   `    VERY START of the "text" field as (tag). Cannot be switched mid-text. Do NOT bury in "instructions".`,
-].join("\n");
+  ].join("\n");
+}
 
 export function createTtsParamsParser({
   apiKey,
   baseUrl,
   model,
+  cloneVoiceNames = [],
 }: {
   apiKey: string;
   baseUrl: string;
   model: string;
+  cloneVoiceNames?: string[];
 }) {
   const openai = createOpenAI({ apiKey, baseURL: baseUrl });
+  const systemPrompt = buildSystemPrompt(cloneVoiceNames);
 
   return {
     async parse(input: string): Promise<TTSParams> {

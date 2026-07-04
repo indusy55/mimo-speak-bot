@@ -43,10 +43,13 @@ export async function bootstrap() {
     log.info({ migrated }, "migrated legacy voice sources");
   }
 
+  const cloneVoiceNames = (await voiceSources.list()).map((s) => s.name);
+
   const ttsParamsParser = env.OPENAI_API_KEY
     ? createTtsParamsParser({
         apiKey: env.OPENAI_API_KEY,
         baseUrl: env.OPENAI_API_BASE_URL,
+        cloneVoiceNames,
         model: env.OPENAI_API_MODEL,
       })
     : undefined;

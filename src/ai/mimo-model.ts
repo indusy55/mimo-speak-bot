@@ -77,7 +77,8 @@ export class MimoModel implements SpeechModelV4 {
     const audioBase64 = json.choices?.[0]?.message?.audio?.data;
 
     if (!audioBase64) {
-      throw new Error("MiMo TTS API returned no audio data");
+      const body = JSON.stringify(json).slice(0, 500);
+      throw new Error(`MiMo TTS API returned no audio data: ${body}`);
     }
 
     return {

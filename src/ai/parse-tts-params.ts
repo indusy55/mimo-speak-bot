@@ -15,9 +15,9 @@ const modelList = [modelIds.preset, modelIds.design, modelIds.clone] as const;
 
 const ttsParamsSchema = z.object({
   text: z.string(),
-  voice: z.string().optional(),
-  instructions: z.string().optional(),
-  model: z.enum(modelList).optional(),
+  voice: z.string().nullish(),
+  instructions: z.string().nullish(),
+  model: z.enum(modelList).nullish(),
 });
 
 export type TTSParams = z.infer<typeof ttsParamsSchema>;

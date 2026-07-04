@@ -207,11 +207,6 @@ export function createTtsParamsParser({
 
       llmModel = resolveModel(resolvedVoice, instructions, llmModel, cloneVoiceNames);
 
-      // Singing is only supported by the preset (standard) model
-      if (/^\(\s*(?:唱歌|sing|singing)\s*\)/i.test(parsed.data.text)) {
-        llmModel = modelIds.preset;
-      }
-
       // voicedesign model does NOT accept a voice parameter
       if (llmModel === modelIds.design) {
         resolvedVoice = undefined;

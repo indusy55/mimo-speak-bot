@@ -37,7 +37,7 @@ function resolveModel(
   _instructions: string | undefined,
   llmModel: string | undefined,
   cloneVoices: string[],
-): "mimo-v2.5-tts" | "mimo-v2.5-tts-voicedesign" | "mimo-v2.5-tts-voiceclone" | undefined {
+): (typeof modelList)[number] | undefined {
   if (voice && cloneVoices.includes(voice)) return modelIds.clone;
   if (voice && presetVoices.includes(voice)) return modelIds.preset;
 
@@ -47,8 +47,8 @@ function resolveModel(
     return modelIds.design;
   }
 
-  if (llmModel && typeof llmModel === "string" && modelList.includes(llmModel as "mimo-v2.5-tts" | "mimo-v2.5-tts-voicedesign" | "mimo-v2.5-tts-voiceclone")) {
-    return llmModel as "mimo-v2.5-tts" | "mimo-v2.5-tts-voicedesign" | "mimo-v2.5-tts-voiceclone";
+  if (llmModel && typeof llmModel === "string" && modelList.includes(llmModel as (typeof modelList)[number])) {
+    return llmModel as (typeof modelList)[number];
   }
 
   return undefined;
@@ -209,9 +209,7 @@ export function createTtsParamsParser({
         }
       }
 
-      const inst: string | undefined = instructions ?? undefined;
-      const mdl: string | undefined = llmModel ?? undefined;
-      const resolved = resolveModel(resolvedVoice, inst, mdl, cloneVoiceNames);
+      const resolved = resolveModel(resolvedVoice, instructions as string | undefined, llmModel as string | undefined, cloneVoiceNames);
 
       // voicedesign model does NOT accept a voice parameter
       if (resolved === modelIds.design) {

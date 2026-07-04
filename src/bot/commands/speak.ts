@@ -123,7 +123,7 @@ export function registerSunCommand({
     }
 
     if (userText && quoted) {
-      llmInput = `${quoted}\n\n额外要求：${userText}`;
+      llmInput = `${quoted}\n${userText}`;
       caption = quoted;
     } else if (userText) {
       llmInput = userText;

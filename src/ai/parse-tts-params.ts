@@ -106,7 +106,7 @@ function buildSystemPrompt(cloneVoiceNames: string[]): string {
     "Audio tag control — style tags at START of text using (tag) or [tag]:",
     "  (开心)text, (悲伤)text, [慵懒]text, (紧张，深呼吸)text, (开心)(河南话)text",
     "  Singing: (唱歌)歌词 (also accepts: sing, singing)",
-    "  Multiple styles in one tag: (怅然 欣慰)text, or stacked emotion+dialect: (开心)(河南话)text",
+    "  Multiple styles in one tag: (开心，四川话)text, (伤心)text, or stacked: (开心)(河南话)text",
     "  Note: only ONE dialect per utterance. 普通话+粤语 mixing in one text is not supported.",
     "",
     "Style categories (use any, not limited to this list):",

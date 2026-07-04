@@ -1,36 +1,34 @@
 import { InputFile, type Context } from "grammy";
-import { defaultPresetVoiceId } from "../../tts/preset-voices.js";
-import type { TtsService } from "../../tts/service.js";
+import type { SpeechService } from "../../ai/speech.js";
+import { defaultPresetVoiceId } from "../../ai/preset-voices.js";
 import type { Log } from "../../core/log.js";
+import { mergeAudioClips } from "../../voice/merger.js";
 import {
   parseSpeakCommand,
   readCommandText,
+  readReplyTextCandidates,
   resolveSpeakText,
   type SpeakParams,
 } from "../parse.js";
 import { replyOptions, replySpeechAudio, replyText } from "../reply.js";
 import { runBotTask } from "../task.js";
-import { mergeAudioClips } from "../../voice/merger.js";
-import type { CommandDeps } from "./types.js";
+import type { CommandDeps, TTSParamsParser } from "./types.js";
 
 type SpeakKind = "clone" | "design" | "preset";
 
 export function registerSpeakCommands({
   bot,
   log,
-  tts,
+  speech,
   env,
-}: Pick<
-  CommandDeps,
-  "bot" | "log" | "tts" | "env"
->) {
+}: Pick<CommandDeps, "bot" | "log" | "speech" | "env">) {
   bot.command("sp", async (ctx) => {
     await handleSpeakCommand({
       command: "sp",
       ctx,
       kind: "preset",
       log,
-      tts,
+      speech,
       usage: "用法：/sp 音色 [-s 风格] [-i 提示词] 文本",
     });
   });
@@ -41,7 +39,7 @@ export function registerSpeakCommands({
       ctx,
       kind: "clone",
       log,
-      tts,
+      speech,
       usage: "用法：/sc 音色 [-s 风格] [-i 提示词] 文本",
     });
   });
@@ -52,7 +50,7 @@ export function registerSpeakCommands({
       ctx,
       kind: "design",
       log,
-      tts,
+      speech,
       usage: "用法：/sd 音色设计描述 [-s 风格] [-i 提示词] 文本",
     });
   });
@@ -61,10 +59,10 @@ export function registerSpeakCommands({
     await handleMultiSpeakCommand({
       command: "spp",
       ctx,
+      env,
       kind: "preset",
       log,
-      tts,
-      env,
+      speech,
     });
   });
 
@@ -72,10 +70,10 @@ export function registerSpeakCommands({
     await handleMultiSpeakCommand({
       command: "scc",
       ctx,
+      env,
       kind: "clone",
       log,
-      tts,
-      env,
+      speech,
     });
   });
 
@@ -83,11 +81,87 @@ export function registerSpeakCommands({
     await handleMultiSpeakCommand({
       command: "sdd",
       ctx,
+      env,
       kind: "design",
       log,
-      tts,
-      env,
+      speech,
     });
+  });
+}
+
+export function registerSunCommand({
+  bot,
+  log,
+  speech,
+  ttsParamsParser,
+}: Pick<CommandDeps, "bot" | "log" | "speech"> & {
+  ttsParamsParser: TTSParamsParser;
+}) {
+  bot.command("sg", async (ctx) => {
+    const message = ctx.message;
+    const commandText = readCommandText(ctx);
+
+    if (!message || !commandText) {
+      return;
+    }
+
+    const cleaned = commandText
+      .replace(/^\/sg(?:@\w+)?(?:\s+|$)/, "")
+      .trim();
+
+    let llmInput = cleaned;
+    let caption = "";
+
+    if (!llmInput) {
+      for (const text of readReplyTextCandidates(message)) {
+        const trimmed = text?.trim();
+        if (trimmed) {
+          llmInput = trimmed;
+          caption = trimmed;
+          break;
+        }
+      }
+    }
+
+    if (!llmInput) {
+      await replyText(ctx, "用法：/sg 自然语言描述\n或回复一条消息 /sg");
+      return;
+    }
+
+    await runBotTask(
+      ctx,
+      log,
+      {
+        errorMessage: "语音合成失败",
+        react: {
+          error: "💊",
+          pending: "👀",
+          success: "👌",
+        },
+      },
+      async () => {
+        const params = await ttsParamsParser.parse(llmInput);
+        const mode = params.mode ?? "preset";
+
+        const result = await speech.synthesize({
+          mode,
+          text: params.text,
+          voice: params.voice ?? "",
+          ...(params.instructions !== undefined
+            ? { instruction: params.instructions }
+            : {}),
+        });
+
+        const captionText = caption || params.voice
+          ? `${mode === "clone" ? "声音源" : mode === "design" ? "设计" : "预置"}：${params.voice || "默认"}`
+          : undefined;
+
+        await replySpeechAudio(ctx, result, {
+          ...(captionText ? { caption: captionText } : {}),
+          title: "语音",
+        });
+      },
+    );
   });
 }
 
@@ -96,14 +170,14 @@ async function handleSpeakCommand({
   ctx,
   kind,
   log,
-  tts,
+  speech,
   usage,
 }: {
   command: string;
   ctx: Context;
   kind: SpeakKind;
   log: Log;
-  tts: TtsService;
+  speech: SpeechService;
   usage: string;
 }) {
   const message = ctx.message;
@@ -124,8 +198,12 @@ async function handleSpeakCommand({
   }
 
   if (!params.voice?.trim()) {
-    await replyText(ctx, usage);
-    return;
+    if (kind !== "preset") {
+      await replyText(ctx, usage);
+      return;
+    }
+
+    params.voice = defaultPresetVoiceId;
   }
 
   const text = resolveSpeakText({
@@ -151,10 +229,12 @@ async function handleSpeakCommand({
     },
     async () => {
       const result = await synthesize({
+        instruction: params.instruction,
         kind,
         params,
+        speech,
+        style: params.style,
         text,
-        tts,
       });
 
       await replySpeechAudio(ctx, result, {
@@ -168,17 +248,17 @@ async function handleSpeakCommand({
 async function handleMultiSpeakCommand({
   command,
   ctx,
+  env,
   kind,
   log,
-  tts,
-  env,
+  speech,
 }: {
   command: string;
   ctx: Context;
+  env: Pick<CommandDeps, "env">["env"];
   kind: SpeakKind;
   log: Log;
-  tts: TtsService;
-  env: Pick<CommandDeps, "env">["env"];
+  speech: SpeechService;
 }) {
   const commandText = readCommandText(ctx);
 
@@ -211,29 +291,26 @@ async function handleMultiSpeakCommand({
       },
     },
     async () => {
-      const results: Awaited<ReturnType<typeof synthesize>>[] = [];
-
-      for (const line of lines) {
-        results.push(
-          await synthesize({
-            kind,
-            params: {
-              voice: line.voice,
-              ...(line.style !== undefined ? { style: line.style } : {}),
-              ...(line.instruction !== undefined ? { instruction: line.instruction } : {}),
-            },
+      const results = await Promise.all(
+        lines.map((line) =>
+          speech.synthesize({
+            mode: kind,
             text: line.text,
-            tts,
+            voice: line.voice,
+            ...(line.instruction !== undefined
+              ? { instruction: line.instruction }
+              : {}),
+            ...(line.style !== undefined ? { style: line.style } : {}),
           }),
-        );
-      }
+        ),
+      );
 
       const merged = await mergeAudioClips(
-        results.map((r) => r.audio.buffer),
+        results.map((result) => result.buffer),
         { ...(env.FFMPEG_PATH ? { ffmpegPath: env.FFMPEG_PATH } : {}) },
       );
 
-      const voiceNames = lines.map((l) => l.voice).join(", ");
+      const voiceNames = lines.map((line) => line.voice).join(", ");
 
       await ctx.replyWithAudio(new InputFile(merged, "speech.wav"), {
         caption: buildCaption(kind, voiceNames),
@@ -244,40 +321,29 @@ async function handleMultiSpeakCommand({
   );
 }
 
-function synthesize({
+async function synthesize({
+  instruction,
   kind,
   params,
+  speech,
+  style,
   text,
-  tts,
+  voice,
 }: {
+  instruction: string | undefined;
   kind: SpeakKind;
   params: SpeakParams;
+  speech: SpeechService;
+  style: string | undefined;
   text: string;
-  tts: TtsService;
+  voice?: string;
 }) {
-  if (kind === "clone") {
-    return tts.clone({
-      ...(params.instruction ? { instruction: params.instruction } : {}),
-      ...(params.style ? { style: params.style } : {}),
-      text,
-      ...(params.voice ? { voice: params.voice } : {}),
-    });
-  }
-
-  if (kind === "design") {
-    return tts.design({
-      ...(params.instruction ? { instruction: params.instruction } : {}),
-      prompt: params.voice ?? "",
-      ...(params.style ? { style: params.style } : {}),
-      text,
-    });
-  }
-
-  return tts.preset({
-    ...(params.instruction ? { instruction: params.instruction } : {}),
-    ...(params.style ? { style: params.style } : {}),
+  return speech.synthesize({
+    mode: kind,
     text,
-    ...(params.voice ? { voice: params.voice } : {}),
+    voice: voice ?? params.voice ?? "",
+    ...(instruction !== undefined ? { instruction } : {}),
+    ...(style !== undefined ? { style } : {}),
   });
 }
 
@@ -300,15 +366,6 @@ type MultiLineItem = {
   text: string;
 };
 
-/**
- * Parse multi-line command input.
- *
- * Blocks are separated by blank lines.  Each block:
- *   voice [-s style] [-i instruction] text…
- *   continuation text…
- *
- * Reuses parseSpeakCommand for the first line of each block.
- */
 function parseMultiLineCommand({
   command,
   text,
@@ -322,23 +379,19 @@ function parseMultiLineCommand({
     return undefined;
   }
 
-  // Split by blank lines — empty or whitespace-only lines
   const blocks = cleaned
     .split(/\n\s*\n/)
-    .map((b) => b.trim())
-    .filter((b) => b.length > 0);
+    .map((block) => block.trim())
+    .filter((block) => block.length > 0);
 
-  if (blocks.length < 2) {
-    return undefined;
-  }
 
   const result: MultiLineItem[] = [];
 
   for (const block of blocks) {
     const lines = block
       .split("\n")
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0);
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
 
     if (lines.length === 0) {
       return undefined;
@@ -347,7 +400,6 @@ function parseMultiLineCommand({
     const firstLine = lines[0];
     const continuationText = lines.slice(1).join("\n");
 
-    // Reuse the existing single-line parser by prepending /sp
     const params = parseSpeakCommand({
       command: "sp",
       text: `/sp ${firstLine}`,
@@ -370,7 +422,9 @@ function parseMultiLineCommand({
     result.push({
       voice: params.voice,
       ...(params.style !== undefined ? { style: params.style } : {}),
-      ...(params.instruction !== undefined ? { instruction: params.instruction } : {}),
+      ...(params.instruction !== undefined
+        ? { instruction: params.instruction }
+        : {}),
       text,
     });
   }

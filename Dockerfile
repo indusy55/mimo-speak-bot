@@ -5,12 +5,15 @@ WORKDIR /app
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 
-RUN corepack enable
+RUN corepack enable \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
-COPY tsconfig.json tsdown.config.ts ./
+COPY tsconfig.json tsdown.config.ts drizzle.config.ts ./
 COPY src ./src
 
 RUN pnpm build && pnpm prune --prod

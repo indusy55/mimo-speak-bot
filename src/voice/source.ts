@@ -2,13 +2,6 @@ import { extname } from "node:path";
 import mime from "mime";
 import { parseBuffer } from "music-metadata";
 
-export const storedVoiceSourceExtensions = new Set([
-  ".m4a",
-  ".mp3",
-  ".ogg",
-  ".wav",
-]);
-
 const uploadMimeTypes = new Set([
   "application/ogg",
   "audio/3gpp",

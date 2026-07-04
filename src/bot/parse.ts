@@ -245,7 +245,20 @@ export function parseNameOnlyCommand({
   }
 
   if (!body.startsWith("(")) {
-    return body;
+    const match = body.match(/^(\S+)/);
+
+    if (!match || match[1] === undefined) {
+      return undefined;
+    }
+
+    const name = match[1];
+    const rest = body.slice(name.length).trim();
+
+    if (rest.length > 0) {
+      return undefined;
+    }
+
+    return name;
   }
 
   const end = body.indexOf(")");

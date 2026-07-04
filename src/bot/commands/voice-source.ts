@@ -132,8 +132,19 @@ export function registerVoiceSourceCommands({
 
     const session = uploadSessions.read(ctx.chat.id, ctx.from.id, message);
 
-    if (!session || !telegramAudioSource.readUpload(message)) {
+    if (!session) {
       await next();
+      return;
+    }
+
+    const upload = telegramAudioSource.readUpload(message);
+
+    if (!upload) {
+      await replyText(
+        ctx,
+        "请发送语音消息、音频文件或视频文件。",
+        message.message_id,
+      );
       return;
     }
 
@@ -149,8 +160,8 @@ export function registerVoiceSourceCommands({
         },
       },
       async () => {
-        const upload = await telegramAudioSource.download(message);
-        return voiceSources.save(session.voiceName, upload);
+        const downloaded = await telegramAudioSource.download(message);
+        return voiceSources.save(session.voiceName, downloaded);
       },
     );
 

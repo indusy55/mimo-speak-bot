@@ -1,7 +1,13 @@
 import { InputFile, type Context } from "grammy";
-import type { TtsResult } from "../tts/api.js";
+import type { AudioFormat } from "../ai/speech.js";
+
 
 const maxTelegramCaptionLength = 1024;
+
+export type SpeechAudio = {
+  buffer: Buffer;
+  format: AudioFormat;
+};
 
 export function replyOptions(ctx: Context, replyToMessageId?: number) {
   return ctx.chat?.type === "private"
@@ -35,7 +41,7 @@ export function replyText(
 
 export function replySpeechAudio(
   ctx: Context,
-  result: TtsResult,
+  result: SpeechAudio,
   {
     caption,
     replyMarkup,
@@ -51,35 +57,7 @@ export function replySpeechAudio(
   },
 ) {
   return ctx.replyWithAudio(
-    new InputFile(result.audio.buffer, `speech.${result.audio.format}`),
-    {
-      ...(caption ? { caption: trimCaption(caption) } : {}),
-      ...replyOptions(ctx, replyToMessageId),
-      ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
-      title,
-    },
-  );
-}
-
-export function replyAudioButton(
-  ctx: Context,
-  result: TtsResult,
-  {
-    caption,
-    replyMarkup,
-    replyToMessageId,
-    title,
-  }: {
-    caption?: string;
-    replyMarkup?: NonNullable<
-      Parameters<Context["replyWithAudio"]>[1]
-    >["reply_markup"];
-    replyToMessageId?: number;
-    title: string;
-  },
-) {
-  return ctx.replyWithAudio(
-    new InputFile(result.audio.buffer, `speech.${result.audio.format}`),
+    new InputFile(result.buffer, `speech.${result.format}`),
     {
       ...(caption ? { caption: trimCaption(caption) } : {}),
       ...replyOptions(ctx, replyToMessageId),

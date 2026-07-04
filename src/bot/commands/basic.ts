@@ -10,6 +10,7 @@ export const commands = [
   { command: "vs", description: "查看声音源" },
   { command: "va", description: "添加声音源" },
   { command: "vd", description: "删除声音源" },
+  { command: "sg", description: "孙笑川" },
 ];
 
 const startText = [

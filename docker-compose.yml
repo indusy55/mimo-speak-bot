@@ -6,9 +6,11 @@ services:
     env_file:
       - .env
     environment:
+      DATABASE_URL: /app/data/voice-sources.db
       FFMPEG_PATH: /usr/bin/ffmpeg
       NODE_ENV: production
       TTS_VOICE_SOURCES_DIR: /app/static
     restart: unless-stopped
     volumes:
+      - ./data:/app/data
       - ./static:/app/static

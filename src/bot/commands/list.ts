@@ -1,4 +1,4 @@
-import { presetVoices } from "../../tts/preset-voices.js";
+import { presetVoices } from "../../ai/preset-voices.js";
 import { replyText } from "../reply.js";
 import { runBotTask } from "../task.js";
 import type { CommandDeps } from "./types.js";

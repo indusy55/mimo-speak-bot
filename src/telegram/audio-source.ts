@@ -18,7 +18,7 @@ export type TelegramAudioUpload = {
   fileId: string;
   fileSize?: number;
   mimeType: string;
-  source: "audio" | "document" | "video" | "voice";
+  source: "audio" | "document" | "video" | "video_note" | "voice";
 };
 
 export type DownloadedTelegramAudio = {
@@ -140,6 +140,7 @@ function* readUploadCandidates(
   yield readAudioUpload(message);
   yield readDocumentUpload(message);
   yield readVideoUpload(message);
+  yield readVideoNoteUpload(message);
 }
 
 function readVoiceUpload(message: Message): TelegramAudioUpload | undefined {
@@ -203,6 +204,25 @@ function readVideoUpload(message: Message): TelegramAudioUpload | undefined {
     ...(message.video.file_size ? { fileSize: message.video.file_size } : {}),
     ...(message.video.mime_type ? { mimeType: message.video.mime_type } : {}),
     source: "video",
+  });
+}
+
+function readVideoNoteUpload(
+  message: Message,
+): TelegramAudioUpload | undefined {
+  if (!("video_note" in message) || !message.video_note) {
+    return undefined;
+  }
+
+  const videoNote = message.video_note;
+
+  return readFileUpload({
+    fileId: videoNote.file_id,
+    mimeType: "video/mp4",
+    source: "video_note",
+    ...(videoNote.file_size !== undefined
+      ? { fileSize: videoNote.file_size }
+      : {}),
   });
 }
 

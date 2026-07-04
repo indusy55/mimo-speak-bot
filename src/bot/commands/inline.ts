@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { InlineQueryResultArticle } from "grammy/types";
-import { defaultPresetVoiceId } from "../../tts/preset-voices.js";
-import { presetVoices } from "../../tts/preset-voices.js";
+import { defaultPresetVoiceId } from "../../ai/preset-voices.js";
+import { presetVoices } from "../../ai/preset-voices.js";
 import type { VoiceSourceService } from "../../voice/service.js";
 import type { InlineDeps } from "./types.js";
 

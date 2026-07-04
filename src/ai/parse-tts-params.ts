@@ -17,7 +17,7 @@ const ttsParamsSchema = z.object({
   text: z.string(),
   voice: z.string().nullish(),
   instructions: z.string().nullish(),
-  model: z.enum(modelList).nullish(),
+  model: z.enum(modelList).catch(undefined),
 });
 
 export type TTSParams = z.infer<typeof ttsParamsSchema>;

@@ -79,6 +79,8 @@ function buildSystemPrompt(cloneVoiceNames: string[]): string {
     "    If voice is a preset name → " + modelIds.preset,
     "    If voice is a clone sample name → " + modelIds.clone,
     "    If instructions describe a custom/designed voice (no preset/clone voice) → " + modelIds.design,
+    "    Singing (唱歌/sing/singing tag in text) is ONLY supported by " + modelIds.preset + " — always use that for singing.",
+    "    When using " + modelIds.preset + ", always set \"voice\" to a suitable preset name (男声→苏打/白桦, 女声→冰糖/茉莉).",
     "    Otherwise → omit (let API decide)",
     "",
     '  "instructions" — natural language style control (high-level overall direction)',
@@ -208,12 +210,6 @@ export function createTtsParamsParser({
       // Singing is only supported by the preset (standard) model
       if (/^\(\s*(?:唱歌|sing|singing)\s*\)/i.test(parsed.data.text)) {
         llmModel = modelIds.preset;
-      }
-
-      // Default male preset voice when user asks for male but no voice specified
-      const maleVoices = ["苏打", "白桦", "Milo", "Dean"];
-      if (!resolvedVoice && instructions?.includes("男") && llmModel === modelIds.preset) {
-        resolvedVoice = maleVoices[0];
       }
 
       // voicedesign model does NOT accept a voice parameter

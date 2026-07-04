@@ -181,7 +181,9 @@ export function createTtsParamsParser({
         },
       });
 
-      const raw = JSON.parse(result.text) as Record<string, unknown>;
+      // Strip markdown code fence if LLM wrapped it
+      const cleanJson = result.text.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "").trim();
+      const raw = JSON.parse(cleanJson) as Record<string, unknown>;
       const parsed = ttsParamsSchema.safeParse(raw);
 
       if (!parsed.success) {

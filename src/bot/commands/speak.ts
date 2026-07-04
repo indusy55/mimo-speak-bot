@@ -105,22 +105,31 @@ export function registerSunCommand({
       return;
     }
 
-    const cleaned = commandText
+    const userText = commandText
       .replace(/^\/sg(?:@\w+)?(?:\s+|$)/, "")
       .trim();
 
-    let llmInput = cleaned;
+    let llmInput: string | undefined;
     let caption = "";
 
-    if (!llmInput) {
-      for (const text of readReplyTextCandidates(message)) {
-        const trimmed = text?.trim();
-        if (trimmed) {
-          llmInput = trimmed;
-          caption = trimmed;
-          break;
-        }
+    // Get reply/quote text if available
+    let quoted: string | undefined;
+    for (const text of readReplyTextCandidates(message)) {
+      const trimmed = text?.trim();
+      if (trimmed) {
+        quoted = trimmed;
+        break;
       }
+    }
+
+    if (userText && quoted) {
+      llmInput = `${quoted}\n\n额外要求：${userText}`;
+      caption = quoted;
+    } else if (userText) {
+      llmInput = userText;
+    } else if (quoted) {
+      llmInput = quoted;
+      caption = quoted;
     }
 
     if (!llmInput) {
